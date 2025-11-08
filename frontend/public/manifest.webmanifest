@@ -1,0 +1,19 @@
+{
+  "name": "Cuverie Pilotage",
+  "short_name": "Cuverie",
+  "description": "Supervision et pilotage des cuves de fermentation en temps réel.",
+  "lang": "fr",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#7c3aed",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "128x128",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
+

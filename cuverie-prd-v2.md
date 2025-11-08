@@ -1,0 +1,106 @@
+
+# PRD — Application PWA Cuverie (Pilotage & Température)
+
+## 1. Contexte
+Les cuveries vinicoles nécessitent un contrôle continu des températures de fermentation ainsi que la possibilité d’agir rapidement sur les cuves (mise en marche, arrêt, réglage de consigne). Aujourd’hui, ces opérations peuvent être lentes ou manuelles. L’objectif est de fournir une **application mobile (PWA)** ergonomique, temps réel, sécurisée, permettant de piloter la cuverie depuis smartphone ou tablette.
+
+## 2. Objectifs du Produit
+- Visualiser la liste des cuves et leur état en un coup d’œil.
+- Voir la température en temps réel d'une cuve.
+- Réglage de la consigne de température.
+- Commande Marche / Arrêt.
+- Saisie du contenu / type de cuve (ex. cépage, millésime).
+- Gestion des alarmes + notifications push.
+- Interface moderne, claire, adaptée au mobile (PWA).
+
+## 3. Utilisateurs Cibles
+| Rôle | Besoin | Appareils |
+|-----|--------|-----------|
+| Opérateur | Suivi et contrôle rapide | Smartphone / tablette |
+| Œnologue / Responsable | Vue d’ensemble + historique + alarmes | PC / tablette |
+
+## 4. Fonctionnalités Détaillées
+
+### 4.1 Tableau de bord (Dashboard)
+- Affichage visuel des cuves sous forme de **cartes "Cuve"**.
+- Couleurs indicatives (normal / alarme).
+- Accès direct au détail d’une cuve.
+
+### 4.2 Écran Détail d’une Cuve
+- Température actuelle **en temps réel (WebSocket)**.
+- Consigne actuelle (modification possible).
+- Boutons **Marche / Arrêt**.
+- Champ de saisie du **contenu** (ex. "Chardonnay 2024").
+- Historique température sur 24h (graphique).
+
+### 4.3 Liste des Cuves
+- Chargée au démarrage de l'application depuis l’API backend.
+- Synchronisation dynamique lors de nouveaux événements MQTT.
+
+### 4.4 Gestion des Alarmes
+- Détection dépassement seuils de température.
+- Affichage tableau des alarmes (mobile et PC).
+- Possibilité d’envoi **notification push** (Web Push API).
+
+### 4.5 Menu Réglages
+- Seuils d’alarme configurables.
+- Préférences utilisateur (unités °C/°F, langue, thème).
+- Gestion accès / rôles (optionnel).
+
+## 5. Architecture Technique
+
+```
+   [Automate WAGO PFC] 
+          ↓ MQTT (publish sensor / subscribe commandes)
+    [Broker MQTT (Mosquitto)]
+          ↓
+    [Backend Node.js + Express]
+      - API REST (CRUD cuves + contenu + réglages)
+      - Passerelle MQTT <-> WebSocket
+      - Authentification JWT
+      - Notifications Push (Web Push API)
+          ↓
+    [Base de Données]
+      - PostgreSQL (cuves, contenu, réglages, alarmes)
+      - InfluxDB ou TimescaleDB (historique températures)
+          ↓
+    [Frontend PWA (React + Tailwind)]
+      - Dashboard
+      - Vue cuve détaillée
+      - Tableau alarmes
+      - Interface mobile-first
+```
+
+## 6. Choix Technologiques
+
+| Domaine | Technologie | Justification |
+|--------|-------------|--------------|
+| Automate | WAGO PFC (Codesys / MQTT Client) | Déjà adapté industrie |
+| Protocole | MQTT | Temps réel léger |
+| Broker MQTT | Mosquitto | Stable, simple, open-source |
+| Backend | **Node.js + Express + MQTT.js + Socket.IO** | Passerelle MQTT / Web temps réel |
+| Frontend | **React + Vite + Tailwind** | Performant, maintenable, UI moderne |
+| PWA | Service Worker + Manifest | Installation smartphone |
+| UI Components | Tailwind + Headless UI | Design propre & rapide |
+| Graphique | Recharts ou Chart.js | Historique lisible |
+| DB État | PostgreSQL | Données applicatives |
+| DB Historique | InfluxDB ou TimescaleDB | Stockage performant données de température |
+| Notifications | Web Push API | Notifications smartphone sans app native |
+
+## 7. Sécurité
+- Aucune connexion directe automate ↔ extérieur.
+- Backend derrière HTTPS + reverse proxy (NGINX).
+- Authentification JWT.
+- Rôles possibles : opérateur / superviseur.
+
+## 8. KPIs Cibles
+| KPI | Cible |
+|-----|-------|
+| Temps d’affichage dashboard | < 1s après WebSocket connecté |
+| Fréquence mise à jour température | 1-5 secondes |
+| Temps modification consigne → prise en compte automate | < 2s |
+| Taux de disponibilité | > 99% |
+
+---
+
+Fin du document.
