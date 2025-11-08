@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { type Tank } from '../../types'
 import { useTankStore } from '../../store/tankStore'
+import { mqttGateway } from '../../services/mqttGateway'
 
 interface TankControlsProps {
   tank: Tank
@@ -26,19 +27,25 @@ export function TankControls({ tank }: TankControlsProps) {
 
   const handleSetpoint = async () => {
     await updateSetpoint(tank.id, Number(setpoint))
+    mqttGateway.publishCommand(tank.id, { type: 'setpoint', value: Number(setpoint) })
   }
 
   const handleToggle = async () => {
     await toggleRunning(tank.id, !tank.isRunning)
+    mqttGateway.publishCommand(tank.id, { type: 'running', value: !tank.isRunning })
   }
 
   const handleContents = async () => {
-    await updateContents(tank.id, {
+    const payload = {
       grape,
       vintage: Number(vintage) || new Date().getFullYear(),
       volumeLiters: Number(volume) || tank.capacityLiters,
       notes,
+    }
+    await updateContents(tank.id, {
+      ...payload,
     })
+    mqttGateway.publishCommand(tank.id, { type: 'contents', value: payload })
   }
 
   return (

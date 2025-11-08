@@ -1,10 +1,21 @@
 import { type FormEvent, useState } from 'react'
 import { useSettingsStore } from '../store/settingsStore'
+import { useMqttStore } from '../store/mqttStore'
+import { mqttGateway } from '../services/mqttGateway'
+import { type MqttGatewayMode } from '../config/mqtt'
 
 export function SettingsPage() {
   const { alarmThresholds, preferences, updateThresholds, updateTemperatureUnit, updateTheme } = useSettingsStore()
   const [high, setHigh] = useState(alarmThresholds.high)
   const [low, setLow] = useState(alarmThresholds.low)
+  const mode = useMqttStore((state) => state.mode)
+  const status = useMqttStore((state) => state.status)
+  const error = useMqttStore((state) => state.error)
+
+  const handleModeChange = (nextMode: MqttGatewayMode) => {
+    if (nextMode === mode) return
+    mqttGateway.switchMode(nextMode)
+  }
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault()
@@ -117,6 +128,42 @@ export function SettingsPage() {
           </div>
         </section>
       </form>
+
+      <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <header>
+          <h3 className="text-lg font-semibold text-slate-900">Mode MQTT</h3>
+          <p className="text-sm text-slate-500">
+            Choisissez entre le mode démonstration (simulateur) et la connexion au broker de production.
+          </p>
+        </header>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {(['mock', 'live'] as const).map((option) => (
+            <button
+              key={option}
+              type="button"
+              onClick={() => handleModeChange(option)}
+              className={`rounded-lg border px-4 py-3 text-left transition ${
+                mode === option
+                  ? 'border-primary bg-primary text-white shadow'
+                  : 'border-slate-200 bg-white text-slate-600 hover:border-primary/40 hover:bg-primary/5'
+              }`}
+            >
+              <p className="text-sm font-semibold">
+                {option === 'mock' ? 'Mode démonstration' : 'Mode production'}
+              </p>
+              <p className={`mt-1 text-xs ${mode === option ? 'text-white/80' : 'text-slate-500'}`}>
+                {option === 'mock'
+                  ? 'Utilise le simulateur local pour générer la télémétrie.'
+                  : 'Se connecte au broker configuré (WSS).'}
+              </p>
+            </button>
+          ))}
+        </div>
+        <p className="text-xs text-slate-500">
+          Statut actuel : <span className="font-semibold">{status}</span>
+          {error ? <span className="text-danger"> · {error}</span> : null}
+        </p>
+      </section>
     </div>
   )
 }

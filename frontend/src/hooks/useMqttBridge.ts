@@ -1,18 +1,15 @@
 import { useEffect } from 'react'
-import { addTelemetryListener, ensureMqttBridge } from '../services/mqttClient'
+import { mqttGateway } from '../services/mqttGateway'
 import { useTankStore } from '../store/tankStore'
-import { useMqttStore } from '../store/mqttStore'
 
 export function useMqttBridge() {
   const applyTelemetry = useTankStore((state) => state.applyTelemetry)
 
   useEffect(() => {
-    ensureMqttBridge()
-    const unsubscribe = addTelemetryListener(applyTelemetry)
-
+    mqttGateway.start()
+    const unsubscribe = mqttGateway.onTelemetry(applyTelemetry)
     return () => {
       unsubscribe()
-      useMqttStore.setState({ status: 'disconnected' })
     }
   }, [applyTelemetry])
 }
