@@ -18,6 +18,9 @@ const envSchema = zod_1.z.object({
     MQTT_TOPIC_ALARMES: zod_1.z.string().optional(),
     MQTT_RECONNECT_PERIOD: zod_1.z.string().optional(),
     ENABLE_MQTT_MOCK: zod_1.z.string().optional(),
+    AUTH_SECRET: zod_1.z.string().optional(),
+    DEMO_USER_EMAIL: zod_1.z.string().optional(),
+    DEMO_USER_PASSWORD: zod_1.z.string().optional(),
 });
 const parsed = envSchema.safeParse(process.env);
 if (!parsed.success) {
@@ -49,6 +52,13 @@ exports.env = {
         },
         reconnectPeriod: toNumber(parsed.data.MQTT_RECONNECT_PERIOD, 2000),
         enableMock: toBoolean(parsed.data.ENABLE_MQTT_MOCK, true),
+    },
+    auth: {
+        secret: parsed.data.AUTH_SECRET ?? 'dev-secret-change-me',
+        demoUser: {
+            email: parsed.data.DEMO_USER_EMAIL ?? 'demo@cuverie.local',
+            password: parsed.data.DEMO_USER_PASSWORD ?? 'cuverie',
+        },
     },
 };
 //# sourceMappingURL=env.js.map

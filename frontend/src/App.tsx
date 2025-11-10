@@ -7,14 +7,36 @@ import { AlarmsPage } from './pages/AlarmsPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { useMqttBridge } from './hooks/useMqttBridge'
 import { useTankStore } from './store/tankStore'
+import { useAuthStore } from './store/authStore'
+import { LoginPanel } from './components/auth/LoginPanel'
 
 function App() {
-  const { initialize } = useTankStore()
+  const initializeTanks = useTankStore((state) => state.initialize)
+  const authStatus = useAuthStore((state) => state.status)
+  const initializeAuth = useAuthStore((state) => state.initialize)
   useMqttBridge()
 
   useEffect(() => {
-    void initialize()
-  }, [initialize])
+    void initializeAuth()
+  }, [initializeAuth])
+
+  useEffect(() => {
+    if (authStatus === 'authenticated') {
+      void initializeTanks()
+    }
+  }, [authStatus, initializeTanks])
+
+  if (authStatus === 'idle' || authStatus === 'loading') {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-100 text-slate-500">
+        Chargement…
+      </div>
+    )
+  }
+
+  if (authStatus === 'unauthenticated') {
+    return <LoginPanel />
+  }
 
   return (
     <AppShell>

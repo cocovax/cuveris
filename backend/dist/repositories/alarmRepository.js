@@ -1,19 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.alarmRepository = void 0;
-const inMemoryStore_1 = require("./inMemoryStore");
+const dataContext_1 = require("../data/dataContext");
 exports.alarmRepository = {
-    list: () => inMemoryStore_1.inMemoryStore.alarms,
-    add: (alarm) => {
-        inMemoryStore_1.inMemoryStore.alarms.unshift(alarm);
-        return alarm;
-    },
-    acknowledge: (id) => {
-        const alarm = inMemoryStore_1.inMemoryStore.alarms.find((item) => item.id === id);
-        if (!alarm)
-            return undefined;
-        alarm.acknowledged = true;
-        return alarm;
-    },
+    list: () => (0, dataContext_1.getDataContext)().alarms.list(),
+    add: (alarm) => (0, dataContext_1.getDataContext)().alarms.add(alarm),
+    acknowledge: (id) => (0, dataContext_1.getDataContext)().alarms.update(id, (alarm) => ({ ...alarm, acknowledged: true })),
 };
 //# sourceMappingURL=alarmRepository.js.map

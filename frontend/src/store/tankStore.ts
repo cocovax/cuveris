@@ -33,8 +33,13 @@ export const useTankStore = create<TankState>((set) => ({
 
   initialize: async () => {
     set({ loading: true })
-    const [tanks, alarms] = await Promise.all([fetchTanks(), fetchAlarms()])
-    set({ tanks, alarms, loading: false })
+    try {
+      const [tanks, alarms] = await Promise.all([fetchTanks(), fetchAlarms()])
+      set({ tanks, alarms, loading: false })
+    } catch (error) {
+      console.error('[TankStore] Impossible de charger les données', error)
+      set({ loading: false })
+    }
   },
 
   selectTank: async (id: string) => {
@@ -62,12 +67,13 @@ export const useTankStore = create<TankState>((set) => ({
               ...payload,
               lastUpdatedAt: new Date().toISOString(),
               history:
-                payload.temperature !== undefined
+                payload.history ??
+                (payload.temperature !== undefined
                   ? [
                       ...state.selectedTank.history.slice(-47),
                       { timestamp: new Date().toISOString(), value: payload.temperature },
                     ]
-                  : state.selectedTank.history,
+                  : state.selectedTank.history),
             }
           : state.selectedTank
 
@@ -76,30 +82,42 @@ export const useTankStore = create<TankState>((set) => ({
   },
 
   setSetpoint: async (id, setpoint) => {
-    const updated = await updateTankSetpoint(id, setpoint)
-    if (!updated) return
-    set((state) => ({
-      tanks: state.tanks.map((tank) => (tank.id === id ? { ...tank, ...updated } : tank)),
-      selectedTank: state.selectedTank?.id === id ? { ...state.selectedTank, ...updated } : state.selectedTank,
-    }))
+    try {
+      const updated = await updateTankSetpoint(id, setpoint)
+      if (!updated) return
+      set((state) => ({
+        tanks: state.tanks.map((tank) => (tank.id === id ? { ...tank, ...updated } : tank)),
+        selectedTank: state.selectedTank?.id === id ? { ...state.selectedTank, ...updated } : state.selectedTank,
+      }))
+    } catch (error) {
+      console.error('[TankStore] Impossible de mettre à jour la consigne', error)
+    }
   },
 
   toggleRunning: async (id, isRunning) => {
-    const updated = await toggleTank(id, isRunning)
-    if (!updated) return
-    set((state) => ({
-      tanks: state.tanks.map((tank) => (tank.id === id ? { ...tank, ...updated } : tank)),
-      selectedTank: state.selectedTank?.id === id ? { ...state.selectedTank, ...updated } : state.selectedTank,
-    }))
+    try {
+      const updated = await toggleTank(id, isRunning)
+      if (!updated) return
+      set((state) => ({
+        tanks: state.tanks.map((tank) => (tank.id === id ? { ...tank, ...updated } : tank)),
+        selectedTank: state.selectedTank?.id === id ? { ...state.selectedTank, ...updated } : state.selectedTank,
+      }))
+    } catch (error) {
+      console.error('[TankStore] Impossible de changer l’état de la cuve', error)
+    }
   },
 
   updateContents: async (id, contents) => {
-    const updated = await updateTankContents(id, contents)
-    if (!updated) return
-    set((state) => ({
-      tanks: state.tanks.map((tank) => (tank.id === id ? { ...tank, ...updated } : tank)),
-      selectedTank: state.selectedTank?.id === id ? { ...state.selectedTank, ...updated } : state.selectedTank,
-    }))
+    try {
+      const updated = await updateTankContents(id, contents)
+      if (!updated) return
+      set((state) => ({
+        tanks: state.tanks.map((tank) => (tank.id === id ? { ...tank, ...updated } : tank)),
+        selectedTank: state.selectedTank?.id === id ? { ...state.selectedTank, ...updated } : state.selectedTank,
+      }))
+    } catch (error) {
+      console.error('[TankStore] Impossible de mettre à jour le contenu', error)
+    }
   },
 }))
 

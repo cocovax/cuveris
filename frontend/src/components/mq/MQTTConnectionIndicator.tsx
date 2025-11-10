@@ -12,7 +12,8 @@ export function MQTTConnectionIndicator() {
       error: 'text-danger',
     }[status] ?? 'text-slate-400'
 
-  const modeLabel = mode === 'mock' ? 'Mode démonstration' : 'Mode production'
+  const modeLabel =
+    mode === 'mock' ? 'Mode démonstration' : mode === 'socket' ? 'Mode socket' : 'Mode production'
 
   return (
     <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">

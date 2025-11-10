@@ -1,4 +1,8 @@
 import { type Alarm, type Tank, type TankContents, type TemperatureReading } from '../types'
+import { httpClient } from './httpClient'
+import { appConfig } from '../config/app'
+
+const useMocks = appConfig.enableMocks
 
 const MOCK_TANKS: Tank[] = [
   {
@@ -72,51 +76,79 @@ const simulateNetwork = async (ms = 400) => {
 }
 
 export async function fetchTanks(): Promise<Tank[]> {
-  await simulateNetwork()
-  return structuredClone(MOCK_TANKS)
+  if (useMocks || !appConfig.apiUrl) {
+    await simulateNetwork()
+    return structuredClone(MOCK_TANKS)
+  }
+  const response = await httpClient.get<{ data: Tank[] }>('/api/tanks')
+  return response.data.data
 }
 
 export async function fetchTankById(id: string): Promise<Tank | undefined> {
-  await simulateNetwork()
-  return structuredClone(MOCK_TANKS.find((tank) => tank.id === id))
+  if (useMocks || !appConfig.apiUrl) {
+    await simulateNetwork()
+    return structuredClone(MOCK_TANKS.find((tank) => tank.id === id))
+  }
+  const response = await httpClient.get<{ data: Tank }>(`/api/tanks/${id}`)
+  return response.data.data
 }
 
 export async function updateTankSetpoint(id: string, setpoint: number): Promise<Tank | undefined> {
-  await simulateNetwork(250)
-  const tank = MOCK_TANKS.find((item) => item.id === id)
-  if (!tank) return undefined
-  tank.setpoint = setpoint
-  tank.lastUpdatedAt = new Date().toISOString()
-  return structuredClone(tank)
+  if (useMocks || !appConfig.apiUrl) {
+    await simulateNetwork(250)
+    const tank = MOCK_TANKS.find((item) => item.id === id)
+    if (!tank) return undefined
+    tank.setpoint = setpoint
+    tank.lastUpdatedAt = new Date().toISOString()
+    return structuredClone(tank)
+  }
+  const response = await httpClient.post<{ data: Tank }>(`/api/tanks/${id}/setpoint`, { value: setpoint })
+  return response.data.data
 }
 
 export async function toggleTank(id: string, isRunning: boolean): Promise<Tank | undefined> {
-  await simulateNetwork(250)
-  const tank = MOCK_TANKS.find((item) => item.id === id)
-  if (!tank) return undefined
-  tank.isRunning = isRunning
-  tank.status = isRunning ? 'cooling' : 'idle'
-  tank.lastUpdatedAt = new Date().toISOString()
-  return structuredClone(tank)
+  if (useMocks || !appConfig.apiUrl) {
+    await simulateNetwork(250)
+    const tank = MOCK_TANKS.find((item) => item.id === id)
+    if (!tank) return undefined
+    tank.isRunning = isRunning
+    tank.status = isRunning ? 'cooling' : 'idle'
+    tank.lastUpdatedAt = new Date().toISOString()
+    return structuredClone(tank)
+  }
+  const response = await httpClient.post<{ data: Tank }>(`/api/tanks/${id}/running`, { value: isRunning })
+  return response.data.data
 }
 
 export async function fetchAlarms(): Promise<Alarm[]> {
-  await simulateNetwork()
-  return structuredClone(MOCK_ALARMS)
+  if (useMocks || !appConfig.apiUrl) {
+    await simulateNetwork()
+    return structuredClone(MOCK_ALARMS)
+  }
+  const response = await httpClient.get<{ data: Alarm[] }>('/api/alarms')
+  return response.data.data
 }
 
 export async function fetchTankHistory(id: string): Promise<TemperatureReading[]> {
-  await simulateNetwork()
-  const tank = MOCK_TANKS.find((item) => item.id === id)
-  return structuredClone(tank?.history ?? [])
+  if (useMocks || !appConfig.apiUrl) {
+    await simulateNetwork()
+    const tank = MOCK_TANKS.find((item) => item.id === id)
+    return structuredClone(tank?.history ?? [])
+  }
+  const response = await httpClient.get<{ data: Tank }>(`/api/tanks/${id}`)
+  return response.data.data.history ?? []
 }
 
 export async function updateTankContents(id: string, contents: TankContents): Promise<Tank | undefined> {
-  await simulateNetwork(250)
-  const tank = MOCK_TANKS.find((item) => item.id === id)
-  if (!tank) return undefined
-  tank.contents = { ...contents }
-  tank.lastUpdatedAt = new Date().toISOString()
-  return structuredClone(tank)
+  if (useMocks || !appConfig.apiUrl) {
+    await simulateNetwork(250)
+    const tank = MOCK_TANKS.find((item) => item.id === id)
+    if (!tank) return undefined
+    tank.contents = { ...contents }
+    tank.lastUpdatedAt = new Date().toISOString()
+    return structuredClone(tank)
+  }
+  const response = await httpClient.post<{ data: Tank }>(`/api/tanks/${id}/contents`, contents)
+  return response.data.data
 }
 

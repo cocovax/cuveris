@@ -13,6 +13,13 @@ export declare const env: {
         reconnectPeriod: number;
         enableMock: boolean;
     };
+    auth: {
+        secret: string;
+        demoUser: {
+            email: string;
+            password: string;
+        };
+    };
 };
 export type AppEnv = typeof env;
 //# sourceMappingURL=env.d.ts.map

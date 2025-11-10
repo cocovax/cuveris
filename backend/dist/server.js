@@ -9,12 +9,25 @@ const app_1 = require("./app");
 const env_1 = require("./config/env");
 const tankRepository_1 = require("./repositories/tankRepository");
 const mqttGateway_1 = require("./services/mqttGateway");
+const authService_1 = require("./services/authService");
 const app = (0, app_1.createApp)();
 const httpServer = node_http_1.default.createServer(app);
 const io = new socket_io_1.Server(httpServer, {
     cors: {
         origin: env_1.env.nodeEnv === 'development' ? '*' : undefined,
     },
+});
+io.use((socket, next) => {
+    const token = socket.handshake.auth?.token;
+    if (!token) {
+        return next(new Error('Unauthorized'));
+    }
+    const payload = authService_1.authService.verifyToken(token);
+    if (!payload) {
+        return next(new Error('Unauthorized'));
+    }
+    socket.data.user = payload;
+    return next();
 });
 io.on('connection', (socket) => {
     socket.emit('tanks:init', tankRepository_1.tankRepository.list());

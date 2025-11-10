@@ -1,17 +1,9 @@
-import { inMemoryStore } from './inMemoryStore'
 import { type Alarm } from '../domain/models'
+import { getDataContext } from '../data/dataContext'
 
 export const alarmRepository = {
-  list: () => inMemoryStore.alarms,
-  add: (alarm: Alarm) => {
-    inMemoryStore.alarms.unshift(alarm)
-    return alarm
-  },
-  acknowledge: (id: string) => {
-    const alarm = inMemoryStore.alarms.find((item) => item.id === id)
-    if (!alarm) return undefined
-    alarm.acknowledged = true
-    return alarm
-  },
+  list: () => getDataContext().alarms.list(),
+  add: (alarm: Alarm) => getDataContext().alarms.add(alarm),
+  acknowledge: (id: string) => getDataContext().alarms.update(id, (alarm) => ({ ...alarm, acknowledged: true })),
 }
 

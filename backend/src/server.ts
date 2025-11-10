@@ -4,6 +4,7 @@ import { createApp } from './app'
 import { env } from './config/env'
 import { tankRepository } from './repositories/tankRepository'
 import { mqttGateway } from './services/mqttGateway'
+import { authService } from './services/authService'
 
 const app = createApp()
 const httpServer = http.createServer(app)
@@ -12,6 +13,19 @@ const io = new Server(httpServer, {
   cors: {
     origin: env.nodeEnv === 'development' ? '*' : undefined,
   },
+})
+
+io.use((socket, next) => {
+  const token = socket.handshake.auth?.token as string | undefined
+  if (!token) {
+    return next(new Error('Unauthorized'))
+  }
+  const payload = authService.verifyToken(token)
+  if (!payload) {
+    return next(new Error('Unauthorized'))
+  }
+  socket.data.user = payload
+  return next()
 })
 
 io.on('connection', (socket) => {

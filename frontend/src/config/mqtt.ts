@@ -1,4 +1,6 @@
-export type MqttGatewayMode = 'mock' | 'live'
+import { appConfig } from './app'
+
+export type MqttGatewayMode = 'mock' | 'live' | 'socket'
 
 export interface MqttConfig {
   url?: string
@@ -37,6 +39,7 @@ export const mqttConfig: MqttConfig = {
 }
 
 export const determineGatewayMode = (): MqttGatewayMode => {
+  if (appConfig.realtimeMode === 'socket') return 'socket'
   if (!mqttConfig.url) return 'mock'
   return mqttConfig.enableMock ? 'mock' : 'live'
 }

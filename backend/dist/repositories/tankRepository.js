@@ -1,21 +1,20 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.tankRepository = void 0;
-const inMemoryStore_1 = require("./inMemoryStore");
+const dataContext_1 = require("../data/dataContext");
+const ctx = () => (0, dataContext_1.getDataContext)();
 const updateTank = (id, updater) => {
-    const index = inMemoryStore_1.inMemoryStore.tanks.findIndex((tank) => tank.id === id);
-    if (index === -1)
-        return undefined;
-    const current = inMemoryStore_1.inMemoryStore.tanks[index];
-    if (!current)
-        return undefined;
-    const updated = updater({ ...current });
-    inMemoryStore_1.inMemoryStore.tanks[index] = { ...updated, lastUpdatedAt: new Date().toISOString() };
-    return inMemoryStore_1.inMemoryStore.tanks[index];
+    return ctx().tanks.update(id, (tank) => {
+        const updated = updater(tank);
+        return {
+            ...updated,
+            history: ctx().temperatureHistory.list(id, 48),
+        };
+    });
 };
 exports.tankRepository = {
-    list: () => inMemoryStore_1.inMemoryStore.tanks,
-    getById: (id) => inMemoryStore_1.inMemoryStore.tanks.find((tank) => tank.id === id),
+    list: () => ctx().tanks.list(),
+    getById: (id) => ctx().tanks.getById(id),
     updateSetpoint: (id, setpoint) => updateTank(id, (tank) => ({
         ...tank,
         setpoint,
@@ -29,15 +28,19 @@ exports.tankRepository = {
         ...tank,
         contents,
     })),
-    applyTelemetry: (id, payload) => updateTank(id, (tank) => ({
-        ...tank,
-        ...payload,
-        history: payload.temperature !== undefined
-            ? [
-                ...tank.history.slice(-47),
-                { timestamp: new Date().toISOString(), value: payload.temperature },
-            ]
-            : tank.history,
-    })),
+    applyTelemetry: (id, payload) => {
+        if (payload.temperature !== undefined) {
+            const sample = {
+                timestamp: new Date().toISOString(),
+                value: payload.temperature,
+            };
+            ctx().temperatureHistory.append(id, sample);
+        }
+        return updateTank(id, (tank) => ({
+            ...tank,
+            ...payload,
+            history: ctx().temperatureHistory.list(id, 48),
+        }));
+    },
 };
 //# sourceMappingURL=tankRepository.js.map

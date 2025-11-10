@@ -1,8 +1,11 @@
 import mqtt, { type MqttClient } from 'mqtt'
+import { io, type Socket } from 'socket.io-client'
 import { type Tank } from '../types'
 import { startMockTelemetry, stopMockTelemetry } from './mockTelemetry'
 import { determineGatewayMode, mqttConfig, type MqttGatewayMode } from '../config/mqtt'
 import { useMqttStore } from '../store/mqttStore'
+import { appConfig } from '../config/app'
+import { useAuthStore } from '../store/authStore'
 
 type TelemetryListener = (payload: Partial<Tank> & { id: string }) => void
 
@@ -14,6 +17,7 @@ export interface PublishOptions {
 const listeners = new Set<TelemetryListener>()
 
 let client: MqttClient | undefined
+let socket: Socket | undefined
 let started = false
 let mode: MqttGatewayMode = determineGatewayMode()
 
@@ -105,12 +109,59 @@ const stopLive = () => {
   client = undefined
 }
 
+const startSocket = () => {
+  if (!appConfig.apiUrl) {
+    startMock()
+    return
+  }
+  mode = 'socket'
+  useMqttStore.getState().setMode(mode)
+  useMqttStore.getState().setStatus('connecting')
+  useMqttStore.getState().setError(undefined)
+
+  const token = useAuthStore.getState().token
+  socket = io(appConfig.apiUrl, {
+    transports: ['websocket'],
+    auth: token ? { token } : undefined,
+  })
+
+  socket.on('connect', () => {
+    useMqttStore.getState().setStatus('connected')
+  })
+
+  socket.on('disconnect', () => {
+    useMqttStore.getState().setStatus('disconnected')
+  })
+
+  socket.on('connect_error', (error) => {
+    useMqttStore.getState().setStatus('error')
+    useMqttStore.getState().setError(error.message)
+  })
+
+  socket.on('tanks:init', (tanks: Tank[]) => {
+    tanks.forEach((tank) => emit({ ...tank }))
+  })
+
+  socket.on('tanks:update', (tank: Tank) => {
+    emit({ ...tank })
+  })
+}
+
+const stopSocket = () => {
+  if (!socket) return
+  socket.off()
+  socket.disconnect()
+  socket = undefined
+}
+
 const startGateway = (forcedMode?: MqttGatewayMode) => {
   if (started) return
   started = true
   const effectiveMode = forcedMode ?? determineGatewayMode()
   if (effectiveMode === 'mock') {
     startMock()
+  } else if (effectiveMode === 'socket') {
+    startSocket()
   } else {
     startLive()
   }
@@ -121,6 +172,8 @@ const stopGateway = () => {
   started = false
   if (mode === 'mock') {
     stopMock()
+  } else if (mode === 'socket') {
+    stopSocket()
   } else {
     stopLive()
   }
@@ -134,7 +187,7 @@ const switchMode = (nextMode: MqttGatewayMode) => {
 }
 
 const publishCommand = (tankId: string, command: Record<string, unknown>, options: PublishOptions = {}) => {
-  if (mode === 'mock') {
+  if (mode === 'mock' || mode === 'socket') {
     console.info('[MQTT mock] commande envoyée', tankId, command)
     return
   }

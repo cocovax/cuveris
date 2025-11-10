@@ -1,19 +1,21 @@
-import { inMemoryStore } from './inMemoryStore'
-import { type Tank, type TankContents } from '../domain/models'
+import { type Tank, type TankContents, type TemperatureSample } from '../domain/models'
+import { getDataContext } from '../data/dataContext'
+
+const ctx = () => getDataContext()
 
 const updateTank = (id: string, updater: (tank: Tank) => Tank) => {
-  const index = inMemoryStore.tanks.findIndex((tank) => tank.id === id)
-  if (index === -1) return undefined
-  const current = inMemoryStore.tanks[index]
-  if (!current) return undefined
-  const updated = updater({ ...current })
-  inMemoryStore.tanks[index] = { ...updated, lastUpdatedAt: new Date().toISOString() }
-  return inMemoryStore.tanks[index]
+  return ctx().tanks.update(id, (tank) => {
+    const updated = updater(tank)
+    return {
+      ...updated,
+      history: ctx().temperatureHistory.list(id, 48),
+    }
+  })
 }
 
 export const tankRepository = {
-  list: () => inMemoryStore.tanks,
-  getById: (id: string) => inMemoryStore.tanks.find((tank) => tank.id === id),
+  list: () => ctx().tanks.list(),
+  getById: (id: string) => ctx().tanks.getById(id),
   updateSetpoint: (id: string, setpoint: number) =>
     updateTank(id, (tank) => ({
       ...tank,
@@ -30,17 +32,19 @@ export const tankRepository = {
       ...tank,
       contents,
     })),
-  applyTelemetry: (id: string, payload: Partial<Tank>) =>
-    updateTank(id, (tank) => ({
+  applyTelemetry: (id: string, payload: Partial<Tank>) => {
+    if (payload.temperature !== undefined) {
+      const sample: TemperatureSample = {
+        timestamp: new Date().toISOString(),
+        value: payload.temperature,
+      }
+      ctx().temperatureHistory.append(id, sample)
+    }
+    return updateTank(id, (tank) => ({
       ...tank,
       ...payload,
-      history:
-        payload.temperature !== undefined
-          ? [
-              ...tank.history.slice(-47),
-              { timestamp: new Date().toISOString(), value: payload.temperature },
-            ]
-          : tank.history,
-    })),
+      history: ctx().temperatureHistory.list(id, 48),
+    }))
+  },
 }
 

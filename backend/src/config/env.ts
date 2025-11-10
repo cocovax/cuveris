@@ -14,6 +14,9 @@ const envSchema = z.object({
   MQTT_TOPIC_ALARMES: z.string().optional(),
   MQTT_RECONNECT_PERIOD: z.string().optional(),
   ENABLE_MQTT_MOCK: z.string().optional(),
+  AUTH_SECRET: z.string().optional(),
+  DEMO_USER_EMAIL: z.string().optional(),
+  DEMO_USER_PASSWORD: z.string().optional(),
 })
 
 const parsed = envSchema.safeParse(process.env)
@@ -48,6 +51,13 @@ export const env = {
     },
     reconnectPeriod: toNumber(parsed.data.MQTT_RECONNECT_PERIOD, 2000),
     enableMock: toBoolean(parsed.data.ENABLE_MQTT_MOCK, true),
+  },
+  auth: {
+    secret: parsed.data.AUTH_SECRET ?? 'dev-secret-change-me',
+    demoUser: {
+      email: parsed.data.DEMO_USER_EMAIL ?? 'demo@cuverie.local',
+      password: parsed.data.DEMO_USER_PASSWORD ?? 'cuverie',
+    },
   },
 }
 

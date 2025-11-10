@@ -1,22 +1,8 @@
-import { inMemoryStore } from './inMemoryStore'
 import { type Settings } from '../domain/models'
+import { getDataContext } from '../data/dataContext'
 
 export const settingsRepository = {
-  get: () => inMemoryStore.settings,
-  update: (payload: Partial<Settings>) => {
-    inMemoryStore.settings = {
-      ...inMemoryStore.settings,
-      ...payload,
-      alarmThresholds: {
-        ...inMemoryStore.settings.alarmThresholds,
-        ...(payload.alarmThresholds ?? {}),
-      },
-      preferences: {
-        ...inMemoryStore.settings.preferences,
-        ...(payload.preferences ?? {}),
-      },
-    }
-    return inMemoryStore.settings
-  },
+  get: () => getDataContext().settings.get(),
+  update: (payload: Partial<Settings>) => getDataContext().settings.update(payload),
 }
 

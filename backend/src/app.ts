@@ -4,6 +4,8 @@ import { tankRoutes } from './routes/tankRoutes'
 import { alarmRoutes } from './routes/alarmRoutes'
 import { settingsRoutes } from './routes/settingsRoutes'
 import { mqttRoutes } from './routes/mqttRoutes'
+import { authRoutes } from './routes/authRoutes'
+import { authenticate } from './middleware/authMiddleware'
 import { env } from './config/env'
 import { mqttGateway } from './services/mqttGateway'
 
@@ -12,6 +14,7 @@ export const createApp = () => {
   app.use(
     cors({
       origin: env.nodeEnv === 'development' ? '*' : undefined,
+      allowedHeaders: ['Content-Type', 'Authorization'],
     }),
   )
   app.use(express.json())
@@ -20,10 +23,11 @@ export const createApp = () => {
     res.json({ status: 'ok', mode: env.nodeEnv, mqttMode: mqttGateway.getMode() })
   })
 
-  app.use('/api/tanks', tankRoutes)
-  app.use('/api/alarms', alarmRoutes)
-  app.use('/api/settings', settingsRoutes)
-  app.use('/api/mqtt', mqttRoutes)
+  app.use('/api/auth', authRoutes)
+  app.use('/api/tanks', authenticate, tankRoutes)
+  app.use('/api/alarms', authenticate, alarmRoutes)
+  app.use('/api/settings', authenticate, settingsRoutes)
+  app.use('/api/mqtt', authenticate, mqttRoutes)
 
   app.use((_req, res) => {
     res.status(404).json({ error: 'Route introuvable' })
