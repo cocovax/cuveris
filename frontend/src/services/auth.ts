@@ -9,6 +9,7 @@ interface LoginResponse {
       email: string
       role: 'operator' | 'supervisor'
     }
+    expiresIn: number
   }
 }
 
@@ -16,6 +17,13 @@ interface MeResponse {
   data: {
     email: string
     role: 'operator' | 'supervisor'
+  }
+}
+
+interface RefreshResponse {
+  data: {
+    token: string
+    expiresIn: number
   }
 }
 
@@ -29,6 +37,7 @@ export const authService = {
           email,
           role: 'supervisor' as const,
         },
+        expiresIn: 4 * 60 * 60,
       }
     }
     const response = await httpClient.post<LoginResponse>('/api/auth/login', { email, password })
@@ -42,6 +51,16 @@ export const authService = {
       }
     }
     const response = await httpClient.get<MeResponse>('/api/auth/me')
+    return response.data.data
+  },
+  refresh: async () => {
+    if (!appConfig.apiUrl) {
+      return {
+        token: 'mock-token',
+        expiresIn: 4 * 60 * 60,
+      }
+    }
+    const response = await httpClient.post<RefreshResponse>('/api/auth/refresh')
     return response.data.data
   },
 }

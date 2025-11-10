@@ -1,11 +1,12 @@
 import mqtt, { type MqttClient } from 'mqtt'
 import { io, type Socket } from 'socket.io-client'
-import { type Tank } from '../types'
+import { type EventLogEntry, type Tank } from '../types'
 import { startMockTelemetry, stopMockTelemetry } from './mockTelemetry'
 import { determineGatewayMode, mqttConfig, type MqttGatewayMode } from '../config/mqtt'
 import { useMqttStore } from '../store/mqttStore'
 import { appConfig } from '../config/app'
 import { useAuthStore } from '../store/authStore'
+import { useEventStore } from '../store/eventStore'
 
 type TelemetryListener = (payload: Partial<Tank> & { id: string }) => void
 
@@ -31,6 +32,10 @@ const getTopicForTank = (tankId: string, suffix: string) => `${tankId}/${suffix}
 const emit = (payload: Partial<Tank> & { id: string }) => {
   listeners.forEach((listener) => listener(payload))
   useMqttStore.getState().recordMessage()
+}
+
+const emitEvent = (event: EventLogEntry) => {
+  useEventStore.getState().append(event)
 }
 
 const startMock = () => {
@@ -144,6 +149,10 @@ const startSocket = () => {
 
   socket.on('tanks:update', (tank: Tank) => {
     emit({ ...tank })
+  })
+
+  socket.on('events:new', (event) => {
+    emitEvent(event)
   })
 }
 

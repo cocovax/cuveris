@@ -1,4 +1,5 @@
 import { type Alarm, type Settings, type Tank, type TemperatureSample } from '../domain/models'
+import { type EventLogEntry } from '../domain/eventLog'
 
 export type TankUpdater = (tank: Tank) => Tank
 export type AlarmUpdater = (alarm: Alarm) => Alarm
@@ -25,10 +26,16 @@ export interface TemperatureHistoryStore {
   append(tankId: string, sample: TemperatureSample): void
 }
 
+export interface EventLogStore {
+  list(limit: number): EventLogEntry[]
+  append(entry: EventLogEntry): void
+}
+
 export interface DataContext {
   tanks: TankStore
   alarms: AlarmStore
   settings: SettingsStore
   temperatureHistory: TemperatureHistoryStore
+  events: EventLogStore
 }
 

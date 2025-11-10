@@ -11,6 +11,7 @@ const alarmRoutes_1 = require("./routes/alarmRoutes");
 const settingsRoutes_1 = require("./routes/settingsRoutes");
 const mqttRoutes_1 = require("./routes/mqttRoutes");
 const authRoutes_1 = require("./routes/authRoutes");
+const eventRoutes_1 = require("./routes/eventRoutes");
 const authMiddleware_1 = require("./middleware/authMiddleware");
 const env_1 = require("./config/env");
 const mqttGateway_1 = require("./services/mqttGateway");
@@ -29,6 +30,7 @@ const createApp = () => {
     app.use('/api/alarms', authMiddleware_1.authenticate, alarmRoutes_1.alarmRoutes);
     app.use('/api/settings', authMiddleware_1.authenticate, settingsRoutes_1.settingsRoutes);
     app.use('/api/mqtt', authMiddleware_1.authenticate, mqttRoutes_1.mqttRoutes);
+    app.use('/api/events', authMiddleware_1.authenticate, eventRoutes_1.eventRoutes);
     app.use((_req, res) => {
         res.status(404).json({ error: 'Route introuvable' });
     });

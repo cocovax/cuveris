@@ -5,6 +5,7 @@ import { env } from './config/env'
 import { tankRepository } from './repositories/tankRepository'
 import { mqttGateway } from './services/mqttGateway'
 import { authService } from './services/authService'
+import { eventBus } from './services/eventBus'
 
 const app = createApp()
 const httpServer = http.createServer(app)
@@ -30,6 +31,12 @@ io.use((socket, next) => {
 
 io.on('connection', (socket) => {
   socket.emit('tanks:init', tankRepository.list())
+  const unsubscribeEvents = eventBus.subscribe((event) => {
+    socket.emit('events:new', event)
+  })
+  socket.on('disconnect', () => {
+    unsubscribeEvents()
+  })
 })
 
 const unsubscribe = mqttGateway.onTelemetry(({ tank }) => {

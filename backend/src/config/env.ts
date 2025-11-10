@@ -17,6 +17,9 @@ const envSchema = z.object({
   AUTH_SECRET: z.string().optional(),
   DEMO_USER_EMAIL: z.string().optional(),
   DEMO_USER_PASSWORD: z.string().optional(),
+  DATA_PROVIDER: z.enum(['memory', 'postgres']).optional(),
+  DATABASE_URL: z.string().optional(),
+  TIMESERIES_DATABASE_URL: z.string().optional(),
 })
 
 const parsed = envSchema.safeParse(process.env)
@@ -58,6 +61,11 @@ export const env = {
       email: parsed.data.DEMO_USER_EMAIL ?? 'demo@cuverie.local',
       password: parsed.data.DEMO_USER_PASSWORD ?? 'cuverie',
     },
+  },
+  data: {
+    provider: parsed.data.DATA_PROVIDER ?? 'memory',
+    databaseUrl: parsed.data.DATABASE_URL,
+    timeseriesUrl: parsed.data.TIMESERIES_DATABASE_URL ?? parsed.data.DATABASE_URL,
   },
 }
 

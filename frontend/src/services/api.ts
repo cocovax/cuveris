@@ -1,4 +1,4 @@
-import { type Alarm, type Tank, type TankContents, type TemperatureReading } from '../types'
+import { type Alarm, type EventLogEntry, type Tank, type TankContents, type TemperatureReading } from '../types'
 import { httpClient } from './httpClient'
 import { appConfig } from '../config/app'
 
@@ -129,6 +129,18 @@ export async function fetchAlarms(): Promise<Alarm[]> {
   return response.data.data
 }
 
+export async function acknowledgeAlarm(id: string): Promise<Alarm | undefined> {
+  if (useMocks || !appConfig.apiUrl) {
+    await simulateNetwork(250)
+    const alarm = MOCK_ALARMS.find((item) => item.id === id)
+    if (!alarm) return undefined
+    alarm.acknowledged = true
+    return structuredClone(alarm)
+  }
+  const response = await httpClient.post<{ data: Alarm }>(`/api/alarms/${id}/acknowledge`)
+  return response.data.data
+}
+
 export async function fetchTankHistory(id: string): Promise<TemperatureReading[]> {
   if (useMocks || !appConfig.apiUrl) {
     await simulateNetwork()
@@ -149,6 +161,35 @@ export async function updateTankContents(id: string, contents: TankContents): Pr
     return structuredClone(tank)
   }
   const response = await httpClient.post<{ data: Tank }>(`/api/tanks/${id}/contents`, contents)
+  return response.data.data
+}
+
+export async function fetchEventLog(limit = 100): Promise<EventLogEntry[]> {
+  if (useMocks || !appConfig.apiUrl) {
+    await simulateNetwork()
+    return Array.from({ length: Math.min(limit, 30) }).map((_, index) => ({
+      id: `event-${index}`,
+      timestamp: new Date(Date.now() - index * 60_000).toISOString(),
+      category: index % 3 === 0 ? 'command' : index % 3 === 1 ? 'telemetry' : 'alarm',
+      source: index % 2 === 0 ? 'user' : 'system',
+      tankId: index % 2 === 0 ? 'tank-01' : 'tank-02',
+      summary:
+        index % 3 === 0
+          ? 'Modification consigne'
+          : index % 3 === 1
+            ? 'Lecture télémétrie reçue'
+            : 'Alarme acquittée',
+      details:
+        index % 3 === 0
+          ? 'Consigne passée à 19.0°C'
+          : index % 3 === 1
+            ? 'Température 18.7°C'
+            : 'Alarme haute acquittée depuis mobile',
+    }))
+  }
+  const response = await httpClient.get<{ data: EventLogEntry[] }>('/api/events', {
+    params: { limit },
+  })
   return response.data.data
 }
 

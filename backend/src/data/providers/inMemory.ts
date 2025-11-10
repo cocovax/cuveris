@@ -1,5 +1,15 @@
-import { type DataContext, type TankStore, type TankUpdater, type AlarmStore, type AlarmUpdater, type SettingsStore, type TemperatureHistoryStore } from '../interfaces'
+import {
+  type DataContext,
+  type TankStore,
+  type TankUpdater,
+  type AlarmStore,
+  type AlarmUpdater,
+  type SettingsStore,
+  type TemperatureHistoryStore,
+  type EventLogStore,
+} from '../interfaces'
 import { type Alarm, type Settings, type Tank, type TemperatureSample } from '../../domain/models'
+import { type EventLogEntry } from '../../domain/eventLog'
 
 const now = () => new Date().toISOString()
 
@@ -91,6 +101,7 @@ const tanksMap = new Map<string, Tank>()
 const historyMap = new Map<string, TemperatureSample[]>()
 const alarmsList: Alarm[] = []
 let storedSettings = structuredClone(seedSettings)
+const eventLog: EventLogEntry[] = []
 
 const initialise = () => {
   seedTanks.forEach((tank) => {
@@ -182,10 +193,21 @@ const buildHistoryStore = (): TemperatureHistoryStore => ({
   },
 })
 
+const buildEventLogStore = (): EventLogStore => ({
+  list: (limit) => eventLog.slice(0, limit).map((entry) => ({ ...entry })),
+  append: (entry) => {
+    eventLog.unshift({ ...entry })
+    if (eventLog.length > 500) {
+      eventLog.splice(500)
+    }
+  },
+})
+
 export const createInMemoryDataContext = (): DataContext => ({
   tanks: buildTankStore(),
   alarms: buildAlarmStore(),
   settings: buildSettingsStore(),
   temperatureHistory: buildHistoryStore(),
+  events: buildEventLogStore(),
 })
 

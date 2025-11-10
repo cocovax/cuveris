@@ -21,6 +21,9 @@ const envSchema = zod_1.z.object({
     AUTH_SECRET: zod_1.z.string().optional(),
     DEMO_USER_EMAIL: zod_1.z.string().optional(),
     DEMO_USER_PASSWORD: zod_1.z.string().optional(),
+    DATA_PROVIDER: zod_1.z.enum(['memory', 'postgres']).optional(),
+    DATABASE_URL: zod_1.z.string().optional(),
+    TIMESERIES_DATABASE_URL: zod_1.z.string().optional(),
 });
 const parsed = envSchema.safeParse(process.env);
 if (!parsed.success) {
@@ -59,6 +62,11 @@ exports.env = {
             email: parsed.data.DEMO_USER_EMAIL ?? 'demo@cuverie.local',
             password: parsed.data.DEMO_USER_PASSWORD ?? 'cuverie',
         },
+    },
+    data: {
+        provider: parsed.data.DATA_PROVIDER ?? 'memory',
+        databaseUrl: parsed.data.DATABASE_URL,
+        timeseriesUrl: parsed.data.TIMESERIES_DATABASE_URL ?? parsed.data.DATABASE_URL,
     },
 };
 //# sourceMappingURL=env.js.map

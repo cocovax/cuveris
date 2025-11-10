@@ -17,3 +17,13 @@ httpClient.interceptors.request.use((config) => {
   return config
 })
 
+httpClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      useAuthStore.getState().logout()
+    }
+    return Promise.reject(error)
+  },
+)
+

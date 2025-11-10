@@ -5,6 +5,7 @@ import { MQTTConnectionIndicator } from '../mq/MQTTConnectionIndicator'
 const navItems = [
   { to: '/', label: 'Dashboard' },
   { to: '/alarmes', label: 'Alarmes' },
+  { to: '/historique', label: 'Historique' },
   { to: '/reglages', label: 'Réglages' },
 ]
 

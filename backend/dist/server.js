@@ -10,6 +10,7 @@ const env_1 = require("./config/env");
 const tankRepository_1 = require("./repositories/tankRepository");
 const mqttGateway_1 = require("./services/mqttGateway");
 const authService_1 = require("./services/authService");
+const eventBus_1 = require("./services/eventBus");
 const app = (0, app_1.createApp)();
 const httpServer = node_http_1.default.createServer(app);
 const io = new socket_io_1.Server(httpServer, {
@@ -31,6 +32,12 @@ io.use((socket, next) => {
 });
 io.on('connection', (socket) => {
     socket.emit('tanks:init', tankRepository_1.tankRepository.list());
+    const unsubscribeEvents = eventBus_1.eventBus.subscribe((event) => {
+        socket.emit('events:new', event);
+    });
+    socket.on('disconnect', () => {
+        unsubscribeEvents();
+    });
 });
 const unsubscribe = mqttGateway_1.mqttGateway.onTelemetry(({ tank }) => {
     io.emit('tanks:update', tank);

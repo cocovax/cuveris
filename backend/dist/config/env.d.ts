@@ -20,6 +20,11 @@ export declare const env: {
             password: string;
         };
     };
+    data: {
+        provider: "memory" | "postgres";
+        databaseUrl: string | undefined;
+        timeseriesUrl: string | undefined;
+    };
 };
 export type AppEnv = typeof env;
 //# sourceMappingURL=env.d.ts.map

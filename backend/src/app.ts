@@ -5,6 +5,7 @@ import { alarmRoutes } from './routes/alarmRoutes'
 import { settingsRoutes } from './routes/settingsRoutes'
 import { mqttRoutes } from './routes/mqttRoutes'
 import { authRoutes } from './routes/authRoutes'
+import { eventRoutes } from './routes/eventRoutes'
 import { authenticate } from './middleware/authMiddleware'
 import { env } from './config/env'
 import { mqttGateway } from './services/mqttGateway'
@@ -28,6 +29,7 @@ export const createApp = () => {
   app.use('/api/alarms', authenticate, alarmRoutes)
   app.use('/api/settings', authenticate, settingsRoutes)
   app.use('/api/mqtt', authenticate, mqttRoutes)
+  app.use('/api/events', authenticate, eventRoutes)
 
   app.use((_req, res) => {
     res.status(404).json({ error: 'Route introuvable' })

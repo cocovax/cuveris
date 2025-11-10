@@ -24,7 +24,7 @@ exports.authRoutes.post('/login', (req, res) => {
         data: {
             token,
             user,
-            expiresIn: 4 * 60 * 60,
+            expiresIn: authService_1.authService.tokenTtlSeconds,
         },
     });
 });
@@ -33,5 +33,18 @@ exports.authRoutes.get('/me', authMiddleware_1.authenticate, (req, res) => {
         return res.status(401).json({ error: 'Non authentifié' });
     }
     return res.json({ data: req.user });
+});
+exports.authRoutes.post('/refresh', authMiddleware_1.authenticate, (req, res) => {
+    if (!req.user) {
+        return res.status(401).json({ error: 'Non authentifié' });
+    }
+    const user = authService_1.authService.userFromPayload(req.user);
+    const token = authService_1.authService.issueToken(user);
+    return res.json({
+        data: {
+            token,
+            expiresIn: authService_1.authService.tokenTtlSeconds,
+        },
+    });
 });
 //# sourceMappingURL=authRoutes.js.map

@@ -1,10 +1,13 @@
-import { useEffect } from 'react'
+import { Suspense, lazy, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useTankStore } from '../store/tankStore'
 import { TankStatusPill } from '../components/tank/TankStatusPill'
-import { TemperatureChart } from '../components/tank/TemperatureChart'
 import { TankControls } from '../components/tank/TankControls'
 import { Skeleton } from '../components/ui/Skeleton'
+
+const TemperatureChart = lazy(() =>
+  import('../components/tank/TemperatureChart').then((module) => ({ default: module.TemperatureChart })),
+)
 
 export function TankDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -85,7 +88,9 @@ export function TankDetailPage() {
         <TankControls tank={tank} />
       </section>
 
-      <TemperatureChart data={tank.history} setpoint={tank.setpoint} />
+      <Suspense fallback={<Skeleton className="h-72 rounded-2xl" />}>
+        <TemperatureChart data={tank.history} setpoint={tank.setpoint} />
+      </Suspense>
     </div>
   )
 }

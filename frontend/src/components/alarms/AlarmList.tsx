@@ -2,6 +2,7 @@ import { type Alarm } from '../../types'
 
 interface AlarmListProps {
   alarms: Alarm[]
+  onAcknowledge?: (id: string) => void
 }
 
 const severityColor: Record<Alarm['severity'], string> = {
@@ -10,7 +11,7 @@ const severityColor: Record<Alarm['severity'], string> = {
   critical: 'bg-danger/10 text-danger',
 }
 
-export function AlarmList({ alarms }: AlarmListProps) {
+export function AlarmList({ alarms, onAcknowledge }: AlarmListProps) {
   if (alarms.length === 0) {
     return (
       <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center text-slate-500 shadow-sm">
@@ -29,6 +30,9 @@ export function AlarmList({ alarms }: AlarmListProps) {
             <th className="px-4 py-3 font-semibold text-slate-500">Gravité</th>
             <th className="px-4 py-3 font-semibold text-slate-500">Déclenchée</th>
             <th className="px-4 py-3 font-semibold text-slate-500">Statut</th>
+            {onAcknowledge ? (
+              <th className="px-4 py-3 font-semibold text-slate-500 text-right">Actions</th>
+            ) : null}
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-200 bg-white">
@@ -55,6 +59,21 @@ export function AlarmList({ alarms }: AlarmListProps) {
                   {alarm.acknowledged ? 'Acquittée' : 'Active'}
                 </span>
               </td>
+              {onAcknowledge ? (
+                <td className="px-4 py-3 text-right">
+                  {!alarm.acknowledged ? (
+                    <button
+                      type="button"
+                      onClick={() => onAcknowledge(alarm.id)}
+                      className="rounded-md border border-primary/40 px-3 py-1.5 text-xs font-semibold text-primary transition hover:border-primary hover:bg-primary/10"
+                    >
+                      Acquitter
+                    </button>
+                  ) : (
+                    <span className="text-xs text-slate-400">—</span>
+                  )}
+                </td>
+              ) : null}
             </tr>
           ))}
         </tbody>

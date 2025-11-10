@@ -85,6 +85,7 @@ const tanksMap = new Map();
 const historyMap = new Map();
 const alarmsList = [];
 let storedSettings = structuredClone(seedSettings);
+const eventLog = [];
 const initialise = () => {
     seedTanks.forEach((tank) => {
         const history = generateHistory(tank.temperature - 1, tank.temperature + 1.5);
@@ -172,11 +173,21 @@ const buildHistoryStore = () => ({
         }
     },
 });
+const buildEventLogStore = () => ({
+    list: (limit) => eventLog.slice(0, limit).map((entry) => ({ ...entry })),
+    append: (entry) => {
+        eventLog.unshift({ ...entry });
+        if (eventLog.length > 500) {
+            eventLog.splice(500);
+        }
+    },
+});
 const createInMemoryDataContext = () => ({
     tanks: buildTankStore(),
     alarms: buildAlarmStore(),
     settings: buildSettingsStore(),
     temperatureHistory: buildHistoryStore(),
+    events: buildEventLogStore(),
 });
 exports.createInMemoryDataContext = createInMemoryDataContext;
 //# sourceMappingURL=inMemory.js.map

@@ -24,7 +24,7 @@ authRoutes.post('/login', (req, res) => {
     data: {
       token,
       user,
-      expiresIn: 4 * 60 * 60,
+      expiresIn: authService.tokenTtlSeconds,
     },
   })
 })
@@ -34,5 +34,19 @@ authRoutes.get('/me', authenticate, (req, res) => {
     return res.status(401).json({ error: 'Non authentifié' })
   }
   return res.json({ data: req.user })
+})
+
+authRoutes.post('/refresh', authenticate, (req, res) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Non authentifié' })
+  }
+  const user = authService.userFromPayload(req.user)
+  const token = authService.issueToken(user)
+  return res.json({
+    data: {
+      token,
+      expiresIn: authService.tokenTtlSeconds,
+    },
+  })
 })
 

@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { type Alarm, type Tank, type TankContents } from '../types'
 import {
+  acknowledgeAlarm,
   fetchAlarms,
   fetchTankById,
   fetchTankHistory,
@@ -22,6 +23,7 @@ interface TankState {
   setSetpoint: (id: string, setpoint: number) => Promise<void>
   toggleRunning: (id: string, isRunning: boolean) => Promise<void>
   updateContents: (id: string, contents: TankContents) => Promise<void>
+  acknowledgeAlarm: (id: string) => Promise<void>
 }
 
 export const useTankStore = create<TankState>((set) => ({
@@ -117,6 +119,18 @@ export const useTankStore = create<TankState>((set) => ({
       }))
     } catch (error) {
       console.error('[TankStore] Impossible de mettre à jour le contenu', error)
+    }
+  },
+
+  acknowledgeAlarm: async (id: string) => {
+    try {
+      const updated = await acknowledgeAlarm(id)
+      if (!updated) return
+      set((state) => ({
+        alarms: state.alarms.map((alarm) => (alarm.id === id ? { ...alarm, ...updated } : alarm)),
+      }))
+    } catch (error) {
+      console.error('[TankStore] Impossible d’acquitter l’alarme', error)
     }
   },
 }))
