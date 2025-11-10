@@ -25,5 +25,6 @@ export interface Tank {
   isRunning: boolean
   alarms: string[]
   history: TemperatureReading[]
+  cuverieId?: string
 }
 

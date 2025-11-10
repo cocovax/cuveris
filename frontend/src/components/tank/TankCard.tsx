@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { type Tank } from '../../types'
+import { useConfigStore } from '../../store/configStore'
 import { TankStatusPill } from './TankStatusPill'
 
 interface TankCardProps {
@@ -7,6 +8,8 @@ interface TankCardProps {
 }
 
 export function TankCard({ tank }: TankCardProps) {
+  const cuverieName =
+    useConfigStore((state) => state.cuveries.find((cuverie) => cuverie.id === tank.cuverieId)?.name) ?? null
   const trend = Number((tank.temperature - tank.setpoint).toFixed(1))
   const trendLabel = trend === 0 ? 'Stable' : trend > 0 ? `+${trend}°C` : `${trend}°C`
 
@@ -17,7 +20,9 @@ export function TankCard({ tank }: TankCardProps) {
     >
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Cuve</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+            {cuverieName ? cuverieName : 'Cuve'}
+          </p>
           <h2 className="text-xl font-semibold text-slate-900">{tank.name}</h2>
         </div>
         <TankStatusPill status={tank.status} />

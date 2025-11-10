@@ -30,6 +30,7 @@ const seedTanks = [
         lastUpdatedAt: now(),
         history: [],
         alarms: [],
+        cuverieId: 'default',
     },
     {
         id: 'tank-02',
@@ -44,6 +45,7 @@ const seedTanks = [
         lastUpdatedAt: now(),
         history: [],
         alarms: [],
+        cuverieId: 'default',
     },
     {
         id: 'tank-03',
@@ -58,6 +60,7 @@ const seedTanks = [
         lastUpdatedAt: now(),
         history: [],
         alarms: ['Température haute'],
+        cuverieId: 'default',
     },
 ];
 const seedAlarms = [
@@ -86,6 +89,8 @@ const historyMap = new Map();
 const alarmsList = [];
 let storedSettings = structuredClone(seedSettings);
 const eventLog = [];
+const cuveries = new Map();
+const generalModes = new Map();
 const initialise = () => {
     seedTanks.forEach((tank) => {
         const history = generateHistory(tank.temperature - 1, tank.temperature + 1.5);
@@ -93,6 +98,18 @@ const initialise = () => {
         tanksMap.set(tank.id, { ...tank, history: [] });
     });
     seedAlarms.forEach((alarm) => alarmsList.push({ ...alarm }));
+    const defaultCuverie = {
+        id: 'default',
+        name: 'Cuverie',
+        tanks: seedTanks.map((tank, index) => ({
+            id: tank.id,
+            ix: 100 + index,
+            displayName: tank.name,
+            order: index,
+        })),
+    };
+    cuveries.set(defaultCuverie.id, defaultCuverie);
+    generalModes.set(defaultCuverie.id, 'ARRET');
 };
 initialise();
 const buildTankStore = () => ({
@@ -119,6 +136,11 @@ const buildTankStore = () => ({
         };
         tanksMap.set(id, stored);
         return cloneTank(stored, historyMap.get(id) ?? []);
+    },
+    create: (tank) => {
+        tanksMap.set(tank.id, { ...tank, history: [] });
+        historyMap.set(tank.id, [...tank.history]);
+        return cloneTank(tank, tank.history);
     },
 });
 const buildAlarmStore = () => ({
@@ -182,12 +204,35 @@ const buildEventLogStore = () => ({
         }
     },
 });
+const buildCuverieStore = () => ({
+    list: () => Array.from(cuveries.values()).map((cuverie) => ({
+        ...cuverie,
+        tanks: cuverie.tanks.map((tank) => ({ ...tank })),
+    })),
+    upsert: (cuverie) => {
+        cuveries.set(cuverie.id, {
+            ...cuverie,
+            tanks: cuverie.tanks.map((tank) => ({ ...tank })),
+        });
+    },
+    deleteById: (id) => {
+        cuveries.delete(id);
+    },
+});
+const buildGeneralModeStore = () => ({
+    get: (cuverieId) => generalModes.get(cuverieId),
+    set: (cuverieId, mode) => {
+        generalModes.set(cuverieId, mode);
+    },
+});
 const createInMemoryDataContext = () => ({
     tanks: buildTankStore(),
     alarms: buildAlarmStore(),
     settings: buildSettingsStore(),
     temperatureHistory: buildHistoryStore(),
     events: buildEventLogStore(),
+    cuveries: buildCuverieStore(),
+    generalModes: buildGeneralModeStore(),
 });
 exports.createInMemoryDataContext = createInMemoryDataContext;
 //# sourceMappingURL=inMemory.js.map

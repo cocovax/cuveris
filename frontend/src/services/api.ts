@@ -1,4 +1,12 @@
-import { type Alarm, type EventLogEntry, type Tank, type TankContents, type TemperatureReading } from '../types'
+import {
+  type Alarm,
+  type CuverieConfig,
+  type EventLogEntry,
+  type GeneralMode,
+  type Tank,
+  type TankContents,
+  type TemperatureReading,
+} from '../types'
 import { httpClient } from './httpClient'
 import { appConfig } from '../config/app'
 
@@ -18,6 +26,7 @@ const MOCK_TANKS: Tank[] = [
     isRunning: true,
     alarms: [],
     history: generateHistory(18, 19.4),
+    cuverieId: 'default',
   },
   {
     id: 'tank-02',
@@ -32,6 +41,7 @@ const MOCK_TANKS: Tank[] = [
     isRunning: false,
     alarms: [],
     history: generateHistory(20.5, 22),
+    cuverieId: 'default',
   },
   {
     id: 'tank-03',
@@ -46,6 +56,7 @@ const MOCK_TANKS: Tank[] = [
     isRunning: true,
     alarms: ['Température haute'],
     history: generateHistory(22.5, 26.2),
+    cuverieId: 'default',
   },
 ]
 
@@ -74,6 +85,19 @@ function generateHistory(min: number, max: number, points = 48): TemperatureRead
 const simulateNetwork = async (ms = 400) => {
   await new Promise((resolve) => setTimeout(resolve, ms))
 }
+
+const MOCK_CUVERIES: CuverieConfig[] = [
+  {
+    id: 'default',
+    name: 'Cuverie',
+    mode: 'ARRET',
+    tanks: [
+      { id: 'tank-01', ix: 101, displayName: 'Cuve 01', order: 1 },
+      { id: 'tank-02', ix: 102, displayName: 'Cuve 02', order: 2 },
+      { id: 'tank-03', ix: 103, displayName: 'Cuve 03', order: 3 },
+    ],
+  },
+]
 
 export async function fetchTanks(): Promise<Tank[]> {
   if (useMocks || !appConfig.apiUrl) {
@@ -191,5 +215,28 @@ export async function fetchEventLog(limit = 100): Promise<EventLogEntry[]> {
     params: { limit },
   })
   return response.data.data
+}
+
+export async function fetchConfig(): Promise<CuverieConfig[]> {
+  if (useMocks || !appConfig.apiUrl) {
+    await simulateNetwork()
+    return structuredClone(MOCK_CUVERIES)
+  }
+  const response = await httpClient.get<{ data: CuverieConfig[] }>('/api/config')
+  return response.data.data
+}
+
+export async function setCuverieMode(cuverieId: string, mode: GeneralMode): Promise<GeneralMode | undefined> {
+  if (useMocks || !appConfig.apiUrl) {
+    await simulateNetwork(200)
+    const cuverie = MOCK_CUVERIES.find((item) => item.id === cuverieId)
+    if (!cuverie) return undefined
+    cuverie.mode = mode
+    return mode
+  }
+  const response = await httpClient.post<{ data: { mode: GeneralMode } }>(`/api/cuveries/${cuverieId}/mode`, {
+    mode,
+  })
+  return response.data.data.mode
 }
 

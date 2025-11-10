@@ -1,10 +1,13 @@
 import { useMemo } from 'react'
 import { useTankStore } from '../store/tankStore'
+import { useConfigStore } from '../store/configStore'
 import { TankCard } from '../components/tank/TankCard'
 import { Skeleton } from '../components/ui/Skeleton'
+import { type Tank } from '../types'
 
 export function DashboardPage() {
   const { tanks, loading } = useTankStore()
+  const cuveries = useConfigStore((state) => state.cuveries)
 
   const kpis = useMemo(() => {
     if (tanks.length === 0) {
@@ -27,6 +30,18 @@ export function DashboardPage() {
     }
   }, [tanks])
 
+  const tanksByCuverie = useMemo(() => {
+    const grouped = new Map<string, Tank[]>()
+    tanks.forEach((tank) => {
+      const key = tank.cuverieId ?? 'default'
+      if (!grouped.has(key)) {
+        grouped.set(key, [])
+      }
+      grouped.get(key)!.push(tank)
+    })
+    return grouped
+  }, [tanks])
+
   if (loading) {
     return (
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -46,14 +61,45 @@ export function DashboardPage() {
         <MetricCard title="Cuves suivies" value={`${tanks.length}`} tone="info" />
       </section>
 
-      <section>
-        <h2 className="mb-4 text-lg font-semibold text-slate-900">Cuves</h2>
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {tanks.map((tank) => (
-            <TankCard key={tank.id} tank={tank} />
-          ))}
-        </div>
-      </section>
+      {cuveries.length > 0 ? (
+        cuveries.map((cuverie) => {
+          const cuverieTanks = tanksByCuverie.get(cuverie.id) ?? []
+          return (
+            <section key={cuverie.id} className="space-y-4">
+              <header className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold text-slate-900">{cuverie.name}</h2>
+                  <p className="text-sm text-slate-500">
+                    Mode général :{' '}
+                    <span className="font-semibold text-slate-700">
+                      {cuverie.mode[0] + cuverie.mode.slice(1).toLowerCase()}
+                    </span>
+                  </p>
+                </div>
+              </header>
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {cuverieTanks.map((tank) => (
+                  <TankCard key={tank.id} tank={tank} />
+                ))}
+                {cuverieTanks.length === 0 && (
+                  <div className="col-span-full rounded-2xl border border-slate-200 bg-white p-6 text-center text-slate-500 shadow-sm">
+                    Aucune cuve associée à cette cuverie.
+                  </div>
+                )}
+              </div>
+            </section>
+          )
+        })
+      ) : (
+        <section>
+          <h2 className="mb-4 text-lg font-semibold text-slate-900">Cuves</h2>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {tanks.map((tank) => (
+              <TankCard key={tank.id} tank={tank} />
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   )
 }

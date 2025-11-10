@@ -1,12 +1,13 @@
 import mqtt, { type MqttClient } from 'mqtt'
 import { io, type Socket } from 'socket.io-client'
-import { type EventLogEntry, type Tank } from '../types'
+import { type CuverieConfig, type EventLogEntry, type Tank } from '../types'
 import { startMockTelemetry, stopMockTelemetry } from './mockTelemetry'
 import { determineGatewayMode, mqttConfig, type MqttGatewayMode } from '../config/mqtt'
 import { useMqttStore } from '../store/mqttStore'
 import { appConfig } from '../config/app'
 import { useAuthStore } from '../store/authStore'
 import { useEventStore } from '../store/eventStore'
+import { useConfigStore } from '../store/configStore'
 
 type TelemetryListener = (payload: Partial<Tank> & { id: string }) => void
 
@@ -36,6 +37,11 @@ const emit = (payload: Partial<Tank> & { id: string }) => {
 
 const emitEvent = (event: EventLogEntry) => {
   useEventStore.getState().append(event)
+}
+
+const applyConfig = (cuveries: CuverieConfig[]) => {
+  if (cuveries.length === 0) return
+  useConfigStore.getState().applyUpdate(cuveries)
 }
 
 const startMock = () => {
@@ -153,6 +159,10 @@ const startSocket = () => {
 
   socket.on('events:new', (event) => {
     emitEvent(event)
+  })
+
+  socket.on('config:update', (event: { cuveries: CuverieConfig[] }) => {
+    applyConfig(event.cuveries)
   })
 }
 

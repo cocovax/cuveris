@@ -25,6 +25,7 @@ export interface Tank {
   lastUpdatedAt: string
   history: TemperatureSample[]
   alarms: string[]
+  cuverieId?: string
 }
 
 export type AlarmSeverity = 'info' | 'warning' | 'critical'

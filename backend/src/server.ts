@@ -42,6 +42,9 @@ io.on('connection', (socket) => {
 const unsubscribe = mqttGateway.onTelemetry(({ tank }) => {
   io.emit('tanks:update', tank)
 })
+const unsubscribeConfig = mqttGateway.onConfig((event) => {
+  io.emit('config:update', event)
+})
 
 mqttGateway.start()
 
@@ -54,6 +57,7 @@ httpServer.listen(port, () => {
 const shutdown = (signal: string) => {
   console.log(`\n${signal} reçu, arrêt du serveur...`)
   unsubscribe()
+  unsubscribeConfig()
   mqttGateway.stop()
   io.close()
   httpServer.close(() => {

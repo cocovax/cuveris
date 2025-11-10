@@ -13,9 +13,48 @@ const updateTank = (id, updater) => {
         };
     });
 };
+const createTankFromConfig = (cuverieId, config) => ({
+    id: config.id,
+    name: config.displayName,
+    status: 'idle',
+    temperature: 20,
+    setpoint: 20,
+    capacityLiters: 5000,
+    fillLevelPercent: 50,
+    isRunning: false,
+    lastUpdatedAt: new Date().toISOString(),
+    history: [],
+    alarms: [],
+    cuverieId,
+});
 exports.tankRepository = {
     list: () => ctx().tanks.list(),
     getById: (id) => ctx().tanks.getById(id),
+    upsertFromConfig: (cuverieId, config) => {
+        const existing = ctx().tanks.getById(config.id);
+        if (!existing) {
+            const created = createTankFromConfig(cuverieId, config);
+            ctx().tanks.create(created);
+            return created;
+        }
+        return ctx().tanks.update(config.id, (tank) => ({
+            ...tank,
+            name: config.displayName,
+            cuverieId,
+        }));
+    },
+    removeMissing: (cuverieId, configs) => {
+        const ids = new Set(configs.map((tank) => tank.id));
+        ctx()
+            .tanks.list()
+            .filter((tank) => tank.cuverieId === cuverieId && !ids.has(tank.id))
+            .forEach((tank) => {
+            ctx().tanks.update(tank.id, () => ({
+                ...tank,
+                status: 'offline',
+            }));
+        });
+    },
     updateSetpoint: (id, setpoint) => updateTank(id, (tank) => {
         eventRepository_1.eventRepository.append({
             id: `cmd-setpoint-${Date.now()}`,

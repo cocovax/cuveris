@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom'
+import { useConfigStore } from '../../store/configStore'
 
-const navItems = [
+const staticItems = [
   { to: '/', label: 'Dashboard' },
   { to: '/alarmes', label: 'Alarmes' },
   { to: '/historique', label: 'Historique' },
@@ -8,9 +9,16 @@ const navItems = [
 ]
 
 export function MobileNav() {
+  const cuveries = useConfigStore((state) => state.cuveries)
+  const items = [
+    staticItems[0],
+    ...cuveries.map((cuverie) => ({ to: `/cuveries/${cuverie.id}`, label: cuverie.name })),
+    ...staticItems.slice(1),
+  ]
+
   return (
     <nav className="fixed bottom-4 left-1/2 z-20 flex w-[92%] max-w-lg -translate-x-1/2 items-center justify-around rounded-full border border-slate-200 bg-white/95 px-2 py-2 shadow-lg backdrop-blur lg:hidden">
-      {navItems.map((item) => (
+      {items.map((item) => (
         <NavLink
           key={item.to}
           to={item.to}

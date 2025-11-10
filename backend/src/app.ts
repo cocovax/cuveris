@@ -6,6 +6,8 @@ import { settingsRoutes } from './routes/settingsRoutes'
 import { mqttRoutes } from './routes/mqttRoutes'
 import { authRoutes } from './routes/authRoutes'
 import { eventRoutes } from './routes/eventRoutes'
+import { configRoutes } from './routes/configRoutes'
+import { cuverieRoutes } from './routes/cuverieRoutes'
 import { authenticate } from './middleware/authMiddleware'
 import { env } from './config/env'
 import { mqttGateway } from './services/mqttGateway'
@@ -30,6 +32,8 @@ export const createApp = () => {
   app.use('/api/settings', authenticate, settingsRoutes)
   app.use('/api/mqtt', authenticate, mqttRoutes)
   app.use('/api/events', authenticate, eventRoutes)
+  app.use('/api/config', authenticate, configRoutes)
+  app.use('/api/cuveries', authenticate, cuverieRoutes)
 
   app.use((_req, res) => {
     res.status(404).json({ error: 'Route introuvable' })

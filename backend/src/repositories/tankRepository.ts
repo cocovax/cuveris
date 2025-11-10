@@ -1,4 +1,5 @@
 import { type Tank, type TankContents, type TemperatureSample } from '../domain/models'
+import { type TankConfig } from '../domain/config'
 import { getDataContext } from '../data/dataContext'
 import { eventRepository } from './eventRepository'
 
@@ -14,9 +15,49 @@ const updateTank = (id: string, updater: (tank: Tank) => Tank) => {
   })
 }
 
+const createTankFromConfig = (cuverieId: string, config: TankConfig): Tank => ({
+  id: config.id,
+  name: config.displayName,
+  status: 'idle',
+  temperature: 20,
+  setpoint: 20,
+  capacityLiters: 5000,
+  fillLevelPercent: 50,
+  isRunning: false,
+  lastUpdatedAt: new Date().toISOString(),
+  history: [],
+  alarms: [],
+  cuverieId,
+})
+
 export const tankRepository = {
   list: () => ctx().tanks.list(),
   getById: (id: string) => ctx().tanks.getById(id),
+  upsertFromConfig: (cuverieId: string, config: TankConfig) => {
+    const existing = ctx().tanks.getById(config.id)
+    if (!existing) {
+      const created = createTankFromConfig(cuverieId, config)
+      ctx().tanks.create(created)
+      return created
+    }
+    return ctx().tanks.update(config.id, (tank) => ({
+      ...tank,
+      name: config.displayName,
+      cuverieId,
+    }))
+  },
+  removeMissing: (cuverieId: string, configs: TankConfig[]) => {
+    const ids = new Set(configs.map((tank) => tank.id))
+    ctx()
+      .tanks.list()
+      .filter((tank) => tank.cuverieId === cuverieId && !ids.has(tank.id))
+      .forEach((tank) => {
+        ctx().tanks.update(tank.id, () => ({
+          ...tank,
+          status: 'offline',
+        }))
+      })
+  },
   updateSetpoint: (id: string, setpoint: number) =>
     updateTank(id, (tank) => {
       eventRepository.append({

@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { type Tank } from '../../types'
 import { useTankStore } from '../../store/tankStore'
+import { useConfigStore } from '../../store/configStore'
 import { mqttGateway } from '../../services/mqttGateway'
 
 interface TankControlsProps {
@@ -16,6 +17,23 @@ export function TankControls({ tank }: TankControlsProps) {
   const updateSetpoint = useTankStore((state) => state.setSetpoint)
   const toggleRunning = useTankStore((state) => state.toggleRunning)
   const updateContents = useTankStore((state) => state.updateContents)
+  const cuveries = useConfigStore((state) => state.cuveries)
+  const tankMetadata = useMemo(() => {
+    return cuveries
+      .flatMap((cuverie) =>
+        cuverie.tanks.map((config) => ({
+          cuverieName: cuverie.name,
+          ix: config.ix,
+          id: config.id,
+        })),
+      )
+      .find((item) => item.id === tank.id)
+  }, [cuveries, tank.id])
+  const tankConfig = useConfigStore((state) =>
+    state.cuveries
+      .flatMap((cuverie) => cuverie.tanks.map((config) => ({ ...config, cuverieId: cuverie.id })))
+      .find((config) => config.id === tank.id),
+  )
 
   useEffect(() => {
     setSetpoint(tank.setpoint)
@@ -51,6 +69,14 @@ export function TankControls({ tank }: TankControlsProps) {
   return (
     <div className="grid gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-2">
       <div className="space-y-3">
+        {tankConfig && (
+          <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500">
+            <p>
+              Index MQTT&nbsp;:{' '}
+              <code className="font-mono text-slate-600">cuve/{tankConfig.ix}</code>
+            </p>
+          </div>
+        )}
         <label className="block text-sm font-semibold text-slate-700">
           Nouvelle consigne
           <input
@@ -77,6 +103,17 @@ export function TankControls({ tank }: TankControlsProps) {
         </button>
       </div>
       <div className="space-y-3">
+        {tankMetadata && (
+          <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500">
+            <p>
+              Cuverie&nbsp;: <span className="font-semibold text-slate-700">{tankMetadata.cuverieName}</span>
+            </p>
+            <p>
+              Index MQTT&nbsp;:{' '}
+              <code className="font-mono text-slate-600">cuve/{tankMetadata.ix}</code>
+            </p>
+          </div>
+        )}
         <label className="block text-sm font-semibold text-slate-700">
           Cépage
           <input

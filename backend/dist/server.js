@@ -42,6 +42,9 @@ io.on('connection', (socket) => {
 const unsubscribe = mqttGateway_1.mqttGateway.onTelemetry(({ tank }) => {
     io.emit('tanks:update', tank);
 });
+const unsubscribeConfig = mqttGateway_1.mqttGateway.onConfig((event) => {
+    io.emit('config:update', event);
+});
 mqttGateway_1.mqttGateway.start();
 const port = env_1.env.port;
 httpServer.listen(port, () => {
@@ -50,6 +53,7 @@ httpServer.listen(port, () => {
 const shutdown = (signal) => {
     console.log(`\n${signal} reçu, arrêt du serveur...`);
     unsubscribe();
+    unsubscribeConfig();
     mqttGateway_1.mqttGateway.stop();
     io.close();
     httpServer.close(() => {

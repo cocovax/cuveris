@@ -3,7 +3,10 @@ import { EventEmitter } from 'node:events'
 import { env } from '../config/env'
 import { startMockTelemetry, stopMockTelemetry } from './mockTelemetry'
 import { tankRepository } from '../repositories/tankRepository'
+import { configRepository } from '../repositories/configRepository'
+import { modeRepository } from '../repositories/modeRepository'
 import { type Tank } from '../domain/models'
+import { type CuverieConfig, type GeneralMode, type TankConfig } from '../domain/config'
 
 export type MqttGatewayMode = 'mock' | 'live'
 
@@ -12,17 +15,128 @@ export interface TelemetryEvent {
   source: 'mqtt' | 'mock'
 }
 
-type TelemetryListener = (event: TelemetryEvent) => void
+export interface ConfigEvent {
+  cuveries: Array<CuverieConfig & { mode: GeneralMode }>
+}
 
-const emitter = new EventEmitter()
+type TelemetryListener = (event: TelemetryEvent) => void
+type ConfigListener = (event: ConfigEvent) => void
+
+const telemetryEmitter = new EventEmitter()
+const configEmitter = new EventEmitter()
 let client: MqttClient | undefined
 let mode: MqttGatewayMode = env.mqtt.enableMock || !env.mqtt.url ? 'mock' : 'live'
 let started = false
 
+const CONFIG_TOPIC = 'global/config/cuves'
+const CUVERIE_MODE_TOPIC = (cuverieName: string) => `global/prod/${cuverieName}/mode`
+
 const emitTelemetry = (tankId: string, payload: Partial<Tank>, source: TelemetryEvent['source']) => {
   const updated = tankRepository.applyTelemetry(tankId, payload)
   if (!updated) return
-  emitter.emit('telemetry', { tank: updated, source } satisfies TelemetryEvent)
+  telemetryEmitter.emit('telemetry', { tank: updated, source } satisfies TelemetryEvent)
+}
+
+const emitConfig = (cuveries: CuverieConfig[]) => {
+  const enriched = cuveries.map((cuverie) => ({
+    ...cuverie,
+    mode: modeRepository.get(cuverie.id) ?? 'ARRET',
+  }))
+  configEmitter.emit('config', { cuveries: enriched } satisfies ConfigEvent)
+}
+
+const normalizeCuverieId = (name: string | undefined) => {
+  if (!name || name.trim().length === 0 || name.toLowerCase() === 'default') {
+    return 'default'
+  }
+  return name
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[^\w\s-]/g, '')
+    .replace(/\s+/g, '-')
+}
+
+const normalizeTankId = (cuverieId: string, tank: { ID?: number; IX?: number; Nom?: string }) => {
+  if (tank.ID !== undefined) {
+    return `${cuverieId}-tank-${tank.ID}`
+  }
+  if (tank.IX !== undefined) {
+    return `${cuverieId}-ix-${tank.IX}`
+  }
+  return `${cuverieId}-${(tank.Nom ?? 'tank').toLowerCase().replace(/\s+/g, '-')}`
+}
+
+const parseCuverieMessage = (payload: unknown): CuverieConfig[] => {
+  const entries = Array.isArray(payload) ? payload : [payload]
+  const cuveries: CuverieConfig[] = []
+  for (const entry of entries) {
+    if (typeof entry !== 'object' || entry === null) continue
+    const { CUVERIE, CUVES } = entry as { CUVERIE?: string; CUVES?: unknown }
+    const cuverieName = CUVERIE ?? 'default'
+    const cuverieId = normalizeCuverieId(cuverieName)
+    const rawTanks = Array.isArray(CUVES) ? CUVES : []
+    const tanks: TankConfig[] = rawTanks
+      .map((tank, index) => {
+        if (typeof tank !== 'object' || tank === null) return undefined
+        const typed = tank as { ID?: number; IX?: number; Nom?: string }
+        return {
+          id: normalizeTankId(cuverieId, typed),
+          ix: typed.IX ?? typed.ID ?? index,
+          displayName: typed.Nom ?? `Cuve ${index + 1}`,
+          order: typed.ID ?? index,
+        } satisfies TankConfig
+      })
+      .filter((tank): tank is TankConfig => Boolean(tank))
+    cuveries.push({
+      id: cuverieId,
+      name: cuverieName,
+      tanks,
+    })
+  }
+  return cuveries
+}
+
+const syncConfig = (cuveries: CuverieConfig[]) => {
+  const existing = new Set(configRepository.list().map((cuverie) => cuverie.id))
+  const seen = new Set<string>()
+  cuveries.forEach((cuverie) => {
+    configRepository.upsert(cuverie)
+    cuverie.tanks.forEach((tank) => tankRepository.upsertFromConfig(cuverie.id, tank))
+    tankRepository.removeMissing(cuverie.id, cuverie.tanks)
+    if (!modeRepository.get(cuverie.id)) {
+      modeRepository.set(cuverie.id, 'ARRET')
+    }
+    seen.add(cuverie.id)
+  })
+  existing.forEach((id) => {
+    if (!seen.has(id)) {
+      configRepository.deleteById(id)
+    }
+  })
+  emitConfig(configRepository.list())
+}
+
+const handleConfigMessage = (raw: unknown) => {
+  try {
+    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
+    const cuveries = parseCuverieMessage(parsed)
+    if (cuveries.length > 0) {
+      syncConfig(cuveries)
+    }
+  } catch (error) {
+    console.error('[MQTT] Configuration cuverie invalide', error)
+  }
+}
+
+const handleModeMessage = (topic: string, message: string) => {
+  const segments = topic.split('/')
+  const cuverieName = segments[2]
+  if (!cuverieName) return
+  const cuverieId = normalizeCuverieId(cuverieName)
+  const modeValue = message.trim().toUpperCase() as GeneralMode
+  if (!['CHAUD', 'FROID', 'ARRET'].includes(modeValue)) return
+  modeRepository.set(cuverieId, modeValue)
+  emitConfig(configRepository.list())
 }
 
 const startMock = () => {
@@ -58,11 +172,24 @@ const startLive = () => {
 
   client.on('connect', () => {
     client?.subscribe(env.mqtt.topics.telemetry)
+    client?.subscribe(CONFIG_TOPIC)
+    client?.subscribe('global/prod/+/mode')
   })
 
-  client.on('message', (topic, raw) => {
+  client.on('message', (topic, rawBuffer) => {
+    const rawMessage = rawBuffer.toString()
+    if (topic === CONFIG_TOPIC) {
+      handleConfigMessage(rawMessage)
+      return
+    }
+
+    if (topic.startsWith('global/prod/') && topic.endsWith('/mode')) {
+      handleModeMessage(topic, rawMessage)
+      return
+    }
+
     try {
-      const data = JSON.parse(raw.toString()) as Partial<Tank> & { id?: string }
+      const data = JSON.parse(rawMessage) as Partial<Tank> & { id?: string }
       const idFromTopic = topic.split('/')[1]
       const tankId = data.id ?? idFromTopic
       if (!tankId) return
@@ -86,6 +213,7 @@ export const mqttGateway = {
     } else {
       startLive()
     }
+    emitConfig(configRepository.list())
   },
   stop: () => {
     if (!started) return
@@ -115,9 +243,24 @@ export const mqttGateway = {
     const topic = `${env.mqtt.topics.commands}/${tankId}`
     client.publish(topic, JSON.stringify(command), { qos: 1 })
   },
+  publishGeneralMode: (cuverieName: string, modeValue: GeneralMode) => {
+    if (mode === 'mock') {
+      console.info('[MQTT mock] mode général', cuverieName, modeValue)
+      return
+    }
+    if (!client) {
+      console.warn('[MQTT] Client non initialisé')
+      return
+    }
+    client.publish(CUVERIE_MODE_TOPIC(cuverieName), modeValue, { qos: 1 })
+  },
   onTelemetry: (listener: TelemetryListener) => {
-    emitter.on('telemetry', listener)
-    return () => emitter.off('telemetry', listener)
+    telemetryEmitter.on('telemetry', listener)
+    return () => telemetryEmitter.off('telemetry', listener)
+  },
+  onConfig: (listener: ConfigListener) => {
+    configEmitter.on('config', listener)
+    return () => configEmitter.off('config', listener)
   },
   getMode: () => mode,
 }

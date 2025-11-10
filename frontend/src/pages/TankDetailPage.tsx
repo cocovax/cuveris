@@ -1,6 +1,7 @@
 import { Suspense, lazy, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useTankStore } from '../store/tankStore'
+import { useConfigStore } from '../store/configStore'
 import { TankStatusPill } from '../components/tank/TankStatusPill'
 import { TankControls } from '../components/tank/TankControls'
 import { Skeleton } from '../components/ui/Skeleton'
@@ -13,6 +14,7 @@ export function TankDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { tanks, selectTank, selectedTank, selectedTankLoading } = useTankStore()
+  const cuveries = useConfigStore((state) => state.cuveries)
 
   useEffect(() => {
     if (!id) return
@@ -53,11 +55,16 @@ export function TankDetailPage() {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 justify-between">
             <TankStatusPill status={tank.status} />
             <span className="text-sm text-slate-500">
               Dernière mise à jour {new Date(tank.lastUpdatedAt).toLocaleTimeString('fr-FR')}
             </span>
+            {tank.cuverieId && (
+              <span className="text-xs font-semibold uppercase text-slate-400">
+                {cuveries.find((item) => item.id === tank.cuverieId)?.name ?? tank.cuverieId}
+              </span>
+            )}
           </div>
           <div className="grid grid-cols-2 gap-4">
             <Metric label="Température" value={`${tank.temperature.toFixed(1)}°C`} />

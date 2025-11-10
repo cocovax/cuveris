@@ -4,6 +4,7 @@ import { AppShell } from './components/layout/AppShell'
 import { useMqttBridge } from './hooks/useMqttBridge'
 import { useTankStore } from './store/tankStore'
 import { useAuthStore } from './store/authStore'
+import { useConfigStore } from './store/configStore'
 import { LoginPanel } from './components/auth/LoginPanel'
 
 const DashboardPage = lazy(() =>
@@ -15,6 +16,7 @@ const TankDetailPage = lazy(() =>
 const AlarmsPage = lazy(() =>
   import('./pages/AlarmsPage').then((module) => ({ default: module.AlarmsPage })),
 )
+const CuveriePage = lazy(() => import('./pages/CuveriePage').then((module) => ({ default: module.CuveriePage })))
 const HistoryPage = lazy(() =>
   import('./pages/HistoryPage').then((module) => ({ default: module.HistoryPage })),
 )
@@ -26,6 +28,7 @@ function App() {
   const initializeTanks = useTankStore((state) => state.initialize)
   const authStatus = useAuthStore((state) => state.status)
   const initializeAuth = useAuthStore((state) => state.initialize)
+  const loadConfig = useConfigStore((state) => state.load)
   useMqttBridge()
 
   useEffect(() => {
@@ -34,9 +37,10 @@ function App() {
 
   useEffect(() => {
     if (authStatus === 'authenticated') {
+      void loadConfig()
       void initializeTanks()
     }
-  }, [authStatus, initializeTanks])
+  }, [authStatus, initializeTanks, loadConfig])
 
   if (authStatus === 'idle' || authStatus === 'loading') {
     return (
@@ -60,6 +64,7 @@ function App() {
         <Routes>
           <Route path="/" element={<DashboardPage />} />
           <Route path="/cuves/:id" element={<TankDetailPage />} />
+          <Route path="/cuveries/:id" element={<CuveriePage />} />
           <Route path="/alarmes" element={<AlarmsPage />} />
           <Route path="/historique" element={<HistoryPage />} />
           <Route path="/reglages" element={<SettingsPage />} />

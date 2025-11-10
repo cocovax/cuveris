@@ -7,9 +7,12 @@ import {
   type SettingsStore,
   type TemperatureHistoryStore,
   type EventLogStore,
+  type CuverieStore,
+  type GeneralModeStore,
 } from '../interfaces'
 import { type Alarm, type Settings, type Tank, type TemperatureSample } from '../../domain/models'
 import { type EventLogEntry } from '../../domain/eventLog'
+import { type CuverieConfig, type GeneralMode } from '../../domain/config'
 
 const now = () => new Date().toISOString()
 
@@ -43,6 +46,7 @@ const seedTanks: Tank[] = [
     lastUpdatedAt: now(),
     history: [],
     alarms: [],
+    cuverieId: 'default',
   },
   {
     id: 'tank-02',
@@ -57,6 +61,7 @@ const seedTanks: Tank[] = [
     lastUpdatedAt: now(),
     history: [],
     alarms: [],
+    cuverieId: 'default',
   },
   {
     id: 'tank-03',
@@ -71,6 +76,7 @@ const seedTanks: Tank[] = [
     lastUpdatedAt: now(),
     history: [],
     alarms: ['Température haute'],
+    cuverieId: 'default',
   },
 ]
 
@@ -102,6 +108,8 @@ const historyMap = new Map<string, TemperatureSample[]>()
 const alarmsList: Alarm[] = []
 let storedSettings = structuredClone(seedSettings)
 const eventLog: EventLogEntry[] = []
+const cuveries = new Map<string, CuverieConfig>()
+const generalModes = new Map<string, GeneralMode>()
 
 const initialise = () => {
   seedTanks.forEach((tank) => {
@@ -110,6 +118,18 @@ const initialise = () => {
     tanksMap.set(tank.id, { ...tank, history: [] })
   })
   seedAlarms.forEach((alarm) => alarmsList.push({ ...alarm }))
+  const defaultCuverie: CuverieConfig = {
+    id: 'default',
+    name: 'Cuverie',
+    tanks: seedTanks.map((tank, index) => ({
+      id: tank.id,
+      ix: 100 + index,
+      displayName: tank.name,
+      order: index,
+    })),
+  }
+  cuveries.set(defaultCuverie.id, defaultCuverie)
+  generalModes.set(defaultCuverie.id, 'ARRET')
 }
 
 initialise()
@@ -137,6 +157,11 @@ const buildTankStore = (): TankStore => ({
     }
     tanksMap.set(id, stored)
     return cloneTank(stored, historyMap.get(id) ?? [])
+  },
+  create: (tank: Tank) => {
+    tanksMap.set(tank.id, { ...tank, history: [] })
+    historyMap.set(tank.id, [...tank.history])
+    return cloneTank(tank, tank.history)
   },
 })
 
@@ -203,11 +228,36 @@ const buildEventLogStore = (): EventLogStore => ({
   },
 })
 
+const buildCuverieStore = (): CuverieStore => ({
+  list: () => Array.from(cuveries.values()).map((cuverie) => ({
+    ...cuverie,
+    tanks: cuverie.tanks.map((tank) => ({ ...tank })),
+  })),
+  upsert: (cuverie) => {
+    cuveries.set(cuverie.id, {
+      ...cuverie,
+      tanks: cuverie.tanks.map((tank) => ({ ...tank })),
+    })
+  },
+  deleteById: (id: string) => {
+    cuveries.delete(id)
+  },
+})
+
+const buildGeneralModeStore = (): GeneralModeStore => ({
+  get: (cuverieId) => generalModes.get(cuverieId),
+  set: (cuverieId, mode) => {
+    generalModes.set(cuverieId, mode)
+  },
+})
+
 export const createInMemoryDataContext = (): DataContext => ({
   tanks: buildTankStore(),
   alarms: buildAlarmStore(),
   settings: buildSettingsStore(),
   temperatureHistory: buildHistoryStore(),
   events: buildEventLogStore(),
+  cuveries: buildCuverieStore(),
+  generalModes: buildGeneralModeStore(),
 })
 

@@ -1,0 +1,124 @@
+---
+alwaysApply: true
+---
+
+# Cahier des Charges — Gestion Dynamique des Cuves & Modes de Cuverie
+
+## 1. Objectif
+La fonctionnalité « Gestion des Cuves » permet d’afficher dynamiquement les cuves dans l’application en fonction d’une configuration transmise par MQTT. L’application doit récupérer la liste des cuves au démarrage, construire l’interface automatiquement et séparer les cuves par cuverie (zones), si plusieurs cuveries existent.
+Chaque cuverie pourra également être pilotée en **mode général** : **Chaud / Froid / Arrêt**, afin d’activer le chauffage ou le refroidissement global de la zone.
+Le backend en mode demo ou en prod recupere un JSON de configuration sur le topic MQTT
+---
+
+## 2. Flux de Données (Source Configuration)
+Le backend ou l’automate publie un JSON de configuration sur :
+```
+global/config/cuves
+```
+L’application lit ce message au démarrage et surveille le topic pour mise à jour dynamique.
+
+### Format du JSON
+```json
+{
+  "CUVERIE": "Nouvelle Cuverie",
+  "CUVES": [
+    { "ID": 1, "IX": 101, "Nom": "Cuve Alpha" },
+    { "ID": 2, "IX": 102, "Nom": "Cuve Beta" }
+  ]
+}
+```
+
+| Champ | Type | Description |
+|------|------|-------------|
+| `CUVERIE` | string | Nom de la cuverie (ex : “Ancienne Cuverie”, “Nouvelle Cuverie”, ou “default”) |
+| `CUVES` | array | Liste des cuves appartenant à la cuverie |
+| `ID` | integer | Identifiant interne utilisé pour l’ordre d’affichage |
+| `IX` | integer | Index utilisé pour lire / écrire via MQTT |
+| `Nom` | string | Nom affiché de la cuve |
+
+---
+
+## 3. Gestion des Pages
+### Cas 1 — Une seule cuverie
+`CUVERIE = "default"` → Une seule page nommée **"Cuverie"**.
+
+### Cas 2 — Plusieurs cuveries
+- Une page par cuverie nommée selon le champ `CUVERIE`.
+- Le menu permet de naviguer entre les cuveries.
+- Mise à jour dynamique possible lors d’une nouvelle configuration.
+
+---
+
+## 4. Mode Général de la Cuverie (Chaud / Froid / Arrêt)
+Chaque cuverie possède un mode global :
+| Mode | Description | Topic MQTT |
+|------|-------------|------------|
+| **CHAUD** | Activation du chauffage dans la zone | `global/prod/{CUVERIE}/mode` |
+| **FROID** | Activation du refroidissement dans la zone | `global/prod/{CUVERIE}/mode` |
+| **ARRET** | Désactivation générale des régulations | `global/prod/{CUVERIE}/mode` |
+
+### Format d’écriture MQTT
+```
+Topic : global/prod/<nom_cuverie>/mode
+Payload : "CHAUD" | "FROID" | "ARRET"
+Format : STRING
+```
+
+---
+
+## 5. Interface d’une Cuve — Topics MQTT
+| Fonction | Topic Lecture | Topic Commande | Type |
+|---------|---------------|----------------|------|
+| Température actuelle | `cuve/{IX}/temp` | — | REAL |
+| État Marche/Arrêt | `cuve/{IX}/etat (STRING)` | `cuve/{IX}/set/mode` | BOOL |
+| Consigne température | `cuve/{IX}/consigne` | `cuve/{IX}/set/consigne` | REAL |
+| Contenance / volume | `cuve/{IX}/contenu` | `cuve/{IX}/set/contenu` | STRING |
+
+---
+
+
+### Icônes UI selon `cuve/x/etat`
+| Valeur | Icône | Signification |
+|--------|-------|---------------|
+| `FROID` | Flocon animé | Refroidissement actif |
+| `CHAUD` | Soleil animé | Chauffage actif |
+| `ATT` | Pause / veille | Régulation en attente |
+| `ARRET` | Carré / arrêt | Système arrêté |
+
+---
+
+## 7. Gestion des Alarmes
+Les alarmes sont reçues via :
+```
+global/alarmes
+```
+
+### Format JSON Exemple
+```json
+{
+  "alarmes": [
+    {
+      "date": "2025-04-25",
+      "heure": "14:23:45",
+      "description": "Température de la cuve de fermentation dépassant le seuil critique"
+    }
+  ]
+}
+```
+
+L’interface présente :
+- Un tableau des alarmes
+- Un indicateur d’alarme active dans le menu
+- Notification push si activée
+
+---
+
+## 8. Sécurité & Fiabilité
+| Situation | Action |
+|----------|--------|
+| JSON invalide | Affichage erreur |
+| Aucun topic reçu | Message « Aucune cuve configurée » |
+| Perte MQTT | Mode dégradé (valeurs figées) |
+| Écriture interdite | Confirmation + rollback visuel |
+
+---
