@@ -92,6 +92,20 @@ const seedAlarms: Alarm[] = [
   },
 ]
 
+const initialMqtt: Settings['mqtt'] = {
+  reconnectPeriod: env.mqtt.reconnectPeriod,
+  enableMock: env.mqtt.enableMock,
+}
+if (env.mqtt.url) {
+  initialMqtt.url = env.mqtt.url
+}
+if (env.mqtt.username) {
+  initialMqtt.username = env.mqtt.username
+}
+if (env.mqtt.password) {
+  initialMqtt.password = env.mqtt.password
+}
+
 const seedSettings: Settings = {
   alarmThresholds: {
     high: 26,
@@ -102,13 +116,7 @@ const seedSettings: Settings = {
     temperatureUnit: 'C',
     theme: 'auto',
   },
-  mqtt: {
-    url: env.mqtt.url,
-    username: env.mqtt.username,
-    password: env.mqtt.password,
-    reconnectPeriod: env.mqtt.reconnectPeriod,
-    enableMock: env.mqtt.enableMock,
-  },
+  mqtt: initialMqtt,
 }
 
 const tanksMap = new Map<string, Tank>()

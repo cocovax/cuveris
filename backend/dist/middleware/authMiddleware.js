@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.authenticate = void 0;
+exports.requireRole = exports.authenticate = void 0;
 const authService_1 = require("../services/authService");
 const extractToken = (header) => {
     if (!header)
@@ -23,4 +23,16 @@ const authenticate = (req, res, next) => {
     return next();
 };
 exports.authenticate = authenticate;
+const requireRole = (role) => {
+    return (req, res, next) => {
+        if (!req.user) {
+            return res.status(401).json({ error: 'Non authentifié' });
+        }
+        if (req.user.role !== role) {
+            return res.status(403).json({ error: 'Accès refusé' });
+        }
+        return next();
+    };
+};
+exports.requireRole = requireRole;
 //# sourceMappingURL=authMiddleware.js.map

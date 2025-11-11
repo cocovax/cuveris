@@ -4,6 +4,7 @@ exports.settingsRoutes = void 0;
 const express_1 = require("express");
 const zod_1 = require("zod");
 const settingsRepository_1 = require("../repositories/settingsRepository");
+const authMiddleware_1 = require("../middleware/authMiddleware");
 const settingsSchema = zod_1.z.object({
     alarmThresholds: zod_1.z
         .object({
@@ -20,12 +21,22 @@ const settingsSchema = zod_1.z.object({
     })
         .partial()
         .optional(),
+    mqtt: zod_1.z
+        .object({
+        url: zod_1.z.string().url().optional(),
+        username: zod_1.z.string().optional(),
+        password: zod_1.z.string().optional(),
+        reconnectPeriod: zod_1.z.number().int().positive().optional(),
+        enableMock: zod_1.z.boolean().optional(),
+    })
+        .partial()
+        .optional(),
 });
 exports.settingsRoutes = (0, express_1.Router)();
-exports.settingsRoutes.get('/', (_req, res) => {
+exports.settingsRoutes.get('/', (0, authMiddleware_1.requireRole)('supervisor'), (_req, res) => {
     res.json({ data: settingsRepository_1.settingsRepository.get() });
 });
-exports.settingsRoutes.patch('/', (req, res) => {
+exports.settingsRoutes.patch('/', (0, authMiddleware_1.requireRole)('supervisor'), (req, res) => {
     const parsed = settingsSchema.safeParse(req.body);
     if (!parsed.success) {
         return res.status(400).json({ error: 'Payload invalide', details: parsed.error.flatten().fieldErrors });
@@ -54,6 +65,25 @@ exports.settingsRoutes.patch('/', (req, res) => {
             preferences.theme = parsed.data.preferences.theme;
         }
         payload.preferences = preferences;
+    }
+    if (parsed.data.mqtt) {
+        const mqtt = { ...current.mqtt };
+        if (parsed.data.mqtt.url !== undefined) {
+            mqtt.url = parsed.data.mqtt.url;
+        }
+        if (parsed.data.mqtt.username !== undefined) {
+            mqtt.username = parsed.data.mqtt.username;
+        }
+        if (parsed.data.mqtt.password !== undefined) {
+            mqtt.password = parsed.data.mqtt.password;
+        }
+        if (parsed.data.mqtt.reconnectPeriod !== undefined) {
+            mqtt.reconnectPeriod = parsed.data.mqtt.reconnectPeriod;
+        }
+        if (parsed.data.mqtt.enableMock !== undefined) {
+            mqtt.enableMock = parsed.data.mqtt.enableMock;
+        }
+        payload.mqtt = mqtt;
     }
     const updated = settingsRepository_1.settingsRepository.update(payload);
     res.json({ data: updated });

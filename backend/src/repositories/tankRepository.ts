@@ -1,6 +1,6 @@
 import { type Tank, type TankContents, type TemperatureSample } from '../domain/models'
 import { type TankConfig } from '../domain/config'
-import { getDataContext } from '../data/dataContext'
+import { getDataContext, postgresAdapters } from '../data/dataContext'
 import { eventRepository } from './eventRepository'
 
 const ctx = () => getDataContext()
@@ -113,6 +113,11 @@ export const tankRepository = {
         value: payload.temperature,
       }
       ctx().temperatureHistory.append(id, sample)
+      if (postgresAdapters) {
+        void postgresAdapters.temperatureHistory
+          .append(id, sample)
+          .catch((error) => console.error('[PostgresSync] Historique MQTT échoué', error))
+      }
       eventRepository.append({
         id: `telemetry-${Date.now()}`,
         timestamp: sample.timestamp,

@@ -5,6 +5,7 @@ import { env } from './config/env'
 import { tankRepository } from './repositories/tankRepository'
 import { mqttGateway } from './services/mqttGateway'
 import { authService } from './services/authService'
+import { initPostgresSync } from './persistence/postgresSync'
 import { eventBus } from './services/eventBus'
 
 const app = createApp()
@@ -39,6 +40,8 @@ io.on('connection', (socket) => {
   })
 })
 
+const disposePostgresSync = initPostgresSync()
+
 const unsubscribe = mqttGateway.onTelemetry(({ tank }) => {
   io.emit('tanks:update', tank)
 })
@@ -58,6 +61,7 @@ const shutdown = (signal: string) => {
   console.log(`\n${signal} reçu, arrêt du serveur...`)
   unsubscribe()
   unsubscribeConfig()
+  disposePostgresSync()
   mqttGateway.stop()
   io.close()
   httpServer.close(() => {

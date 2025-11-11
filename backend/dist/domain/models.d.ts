@@ -46,5 +46,12 @@ export interface UserPreferences {
 export interface Settings {
     alarmThresholds: AlarmThresholds;
     preferences: UserPreferences;
+    mqtt: {
+        url?: string;
+        username?: string;
+        password?: string;
+        reconnectPeriod: number;
+        enableMock: boolean;
+    };
 }
 //# sourceMappingURL=models.d.ts.map

@@ -1,0 +1,65 @@
+version: '3.9'
+
+services:
+  backend:
+    build:
+      context: ./backend
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DATA_PROVIDER: postgres
+      DATABASE_URL: postgres://cuve_user:cuve_password@postgres:5432/cuvedb
+      TIMESERIES_DATABASE_URL: postgres://cuve_user:cuve_password@postgres:5432/cuvedb
+      MQTT_URL: ws://mqtt:1883
+      MQTT_USERNAME: ""
+      MQTT_PASSWORD: ""
+      ENABLE_MQTT_MOCK: "false"
+      AUTH_SECRET: super-secret-key
+      DEMO_USER_EMAIL: demo@cuverie.local
+      DEMO_USER_PASSWORD: cuverie
+    ports:
+      - "4000:4000"
+    depends_on:
+      - postgres
+      - mqtt
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: ${VITE_API_URL-http://localhost:4000}
+    environment:
+      - VITE_API_URL=${VITE_API_URL-http://localhost:4000}
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+
+  mqtt:
+    image: eclipse-mosquitto:2
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - mosquitto-data:/mosquitto/data
+      - mosquitto-config:/mosquitto/config
+      - mosquitto-log:/mosquitto/log
+
+  postgres:
+    image: timescale/timescaledb:2.13.1-pg15
+    environment:
+      POSTGRES_USER: cuve_user
+      POSTGRES_PASSWORD: cuve_password
+      POSTGRES_DB: cuvedb
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+      - ./docker/db/init.sql:/docker-entrypoint-initdb.d/001-init.sql
+
+volumes:
+  mosquitto-data:
+  mosquitto-config:
+  mosquitto-log:
+  pg-data:
+

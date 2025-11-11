@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.createInMemoryDataContext = void 0;
+const env_1 = require("../../config/env");
 const now = () => new Date().toISOString();
 const cloneTank = (tank, history) => ({
     ...tank,
@@ -73,6 +74,19 @@ const seedAlarms = [
         acknowledged: false,
     },
 ];
+const initialMqtt = {
+    reconnectPeriod: env_1.env.mqtt.reconnectPeriod,
+    enableMock: env_1.env.mqtt.enableMock,
+};
+if (env_1.env.mqtt.url) {
+    initialMqtt.url = env_1.env.mqtt.url;
+}
+if (env_1.env.mqtt.username) {
+    initialMqtt.username = env_1.env.mqtt.username;
+}
+if (env_1.env.mqtt.password) {
+    initialMqtt.password = env_1.env.mqtt.password;
+}
 const seedSettings = {
     alarmThresholds: {
         high: 26,
@@ -83,6 +97,7 @@ const seedSettings = {
         temperatureUnit: 'C',
         theme: 'auto',
     },
+    mqtt: initialMqtt,
 };
 const tanksMap = new Map();
 const historyMap = new Map();
@@ -173,6 +188,10 @@ const buildSettingsStore = () => ({
             preferences: {
                 ...storedSettings.preferences,
                 ...(payload.preferences ?? {}),
+            },
+            mqtt: {
+                ...storedSettings.mqtt,
+                ...(payload.mqtt ?? {}),
             },
         };
         return structuredClone(storedSettings);

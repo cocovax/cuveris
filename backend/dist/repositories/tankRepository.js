@@ -107,6 +107,11 @@ exports.tankRepository = {
                 value: payload.temperature,
             };
             ctx().temperatureHistory.append(id, sample);
+            if (dataContext_1.postgresAdapters) {
+                void dataContext_1.postgresAdapters.temperatureHistory
+                    .append(id, sample)
+                    .catch((error) => console.error('[PostgresSync] Historique MQTT échoué', error));
+            }
             eventRepository_1.eventRepository.append({
                 id: `telemetry-${Date.now()}`,
                 timestamp: sample.timestamp,

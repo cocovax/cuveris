@@ -10,6 +10,7 @@ const env_1 = require("./config/env");
 const tankRepository_1 = require("./repositories/tankRepository");
 const mqttGateway_1 = require("./services/mqttGateway");
 const authService_1 = require("./services/authService");
+const postgresSync_1 = require("./persistence/postgresSync");
 const eventBus_1 = require("./services/eventBus");
 const app = (0, app_1.createApp)();
 const httpServer = node_http_1.default.createServer(app);
@@ -39,6 +40,7 @@ io.on('connection', (socket) => {
         unsubscribeEvents();
     });
 });
+const disposePostgresSync = (0, postgresSync_1.initPostgresSync)();
 const unsubscribe = mqttGateway_1.mqttGateway.onTelemetry(({ tank }) => {
     io.emit('tanks:update', tank);
 });
@@ -54,6 +56,7 @@ const shutdown = (signal) => {
     console.log(`\n${signal} reçu, arrêt du serveur...`);
     unsubscribe();
     unsubscribeConfig();
+    disposePostgresSync();
     mqttGateway_1.mqttGateway.stop();
     io.close();
     httpServer.close(() => {
