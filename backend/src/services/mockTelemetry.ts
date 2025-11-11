@@ -1,29 +1,29 @@
 import { type Tank } from '../domain/models'
 
-type TelemetryEmitter = (payload: Partial<Tank> & { id: string }) => void
+type TelemetryEmitter = (payload: Partial<Tank> & { ix: number; id?: string }) => void
 
 interface MockOptions {
   intervalMs?: number
-  tankIds?: string[]
+  tankIxs?: number[]
 }
 
-const DEFAULT_TANKS: [string, ...string[]] = ['tank-01', 'tank-02', 'tank-03']
+const DEFAULT_TANKS: [number, ...number[]] = [101, 102, 103]
 
 let timer: NodeJS.Timeout | undefined
 
 export const startMockTelemetry = (emit: TelemetryEmitter, options: MockOptions = {}) => {
   stopMockTelemetry()
   const intervalMs = options.intervalMs ?? 5000
-  const tankList = options.tankIds && options.tankIds.length > 0 ? options.tankIds : DEFAULT_TANKS
+  const tankList = options.tankIxs && options.tankIxs.length > 0 ? options.tankIxs : DEFAULT_TANKS
 
   timer = setInterval(() => {
     const index = Math.floor(Math.random() * tankList.length)
     const candidate = tankList[index]
-    const tankId = candidate ?? DEFAULT_TANKS[0]
+    const tankIx = candidate ?? DEFAULT_TANKS[0]
     const base = 20 + Math.random() * 5
     const temperature = Number((base + (Math.random() - 0.5)).toFixed(2))
     emit({
-      id: tankId,
+      ix: tankIx,
       temperature,
       lastUpdatedAt: new Date().toISOString(),
     })

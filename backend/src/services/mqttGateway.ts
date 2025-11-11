@@ -31,8 +31,27 @@ let started = false
 const CONFIG_TOPIC = 'global/config/cuves'
 const CUVERIE_MODE_TOPIC = (cuverieName: string) => `global/prod/${cuverieName}/mode`
 
-const emitTelemetry = (tankId: string, payload: Partial<Tank>, source: TelemetryEvent['source']) => {
-  const updated = tankRepository.applyTelemetry(tankId, payload)
+const resolveTankIx = (identifier: string | number | undefined): number | undefined => {
+  if (typeof identifier === 'number' && Number.isFinite(identifier)) {
+    return identifier
+  }
+  if (typeof identifier === 'string') {
+    const numeric = Number(identifier)
+    if (!Number.isNaN(numeric)) {
+      return numeric
+    }
+    const tank = tankRepository.list().find((candidate) => candidate.id === identifier)
+    if (tank) {
+      return tank.ix
+    }
+  }
+  return undefined
+}
+
+const emitTelemetry = (tankRef: string | number, payload: Partial<Tank>, source: TelemetryEvent['source']) => {
+  const tankIx = resolveTankIx(tankRef)
+  if (tankIx === undefined) return
+  const updated = tankRepository.applyTelemetry(tankIx, payload)
   if (!updated) return
   telemetryEmitter.emit('telemetry', { tank: updated, source } satisfies TelemetryEvent)
 }
@@ -146,9 +165,13 @@ const handleModeMessage = (topic: string, message: string) => {
 const startMock = () => {
   stopMockTelemetry()
   mode = 'mock'
+  const tankIxs = tankRepository.list().map((tank) => tank.ix)
+  const options = tankIxs.length > 0 ? { tankIxs } : {}
   startMockTelemetry((payload) => {
-    emitTelemetry(payload.id, payload, 'mock')
-  })
+    const ref = payload.ix ?? payload.id
+    if (ref === undefined) return
+    emitTelemetry(ref, payload, 'mock')
+  }, options)
 }
 
 const stopMock = () => {
@@ -193,11 +216,11 @@ const startLive = () => {
     }
 
     try {
-      const data = JSON.parse(rawMessage) as Partial<Tank> & { id?: string }
+      const data = JSON.parse(rawMessage) as Partial<Tank> & { id?: string; ix?: number }
       const idFromTopic = topic.split('/')[1]
-      const tankId = data.id ?? idFromTopic
-      if (!tankId) return
-      emitTelemetry(tankId, data, 'mqtt')
+      const tankRef = data.ix ?? data.id ?? idFromTopic
+      if (tankRef === undefined) return
+      emitTelemetry(tankRef, data, 'mqtt')
     } catch (error) {
       console.error('[MQTT] Impossible de parser le message', error)
     }
@@ -235,16 +258,16 @@ export const mqttGateway = {
     mode = nextMode
     mqttGateway.start()
   },
-  publishCommand: (tankId: string, command: Record<string, unknown>) => {
+  publishCommand: (tankIx: number, command: Record<string, unknown>) => {
     if (mode === 'mock') {
-      console.info('[MQTT mock] commande', tankId, command)
+      console.info('[MQTT mock] commande', tankIx, command)
       return
     }
     if (!client) {
       console.warn('[MQTT] Client non initialisé')
       return
     }
-    const topic = `${env.mqtt.topics.commands}/${tankId}`
+    const topic = `${env.mqtt.topics.commands}/${tankIx}`
     client.publish(topic, JSON.stringify(command), { qos: 1 })
   },
   publishGeneralMode: (cuverieName: string, modeValue: GeneralMode) => {

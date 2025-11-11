@@ -13,6 +13,7 @@ export interface TemperatureReading {
 }
 
 export interface Tank {
+  ix: number
   id: string
   name: string
   status: TankStatus
@@ -26,5 +27,6 @@ export interface Tank {
   alarms: string[]
   history: TemperatureReading[]
   cuverieId?: string
+  isDeleted?: boolean
 }
 

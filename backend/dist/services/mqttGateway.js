@@ -18,8 +18,27 @@ let mode = env_1.env.mqtt.enableMock || !env_1.env.mqtt.url ? 'mock' : 'live';
 let started = false;
 const CONFIG_TOPIC = 'global/config/cuves';
 const CUVERIE_MODE_TOPIC = (cuverieName) => `global/prod/${cuverieName}/mode`;
-const emitTelemetry = (tankId, payload, source) => {
-    const updated = tankRepository_1.tankRepository.applyTelemetry(tankId, payload);
+const resolveTankIx = (identifier) => {
+    if (typeof identifier === 'number' && Number.isFinite(identifier)) {
+        return identifier;
+    }
+    if (typeof identifier === 'string') {
+        const numeric = Number(identifier);
+        if (!Number.isNaN(numeric)) {
+            return numeric;
+        }
+        const tank = tankRepository_1.tankRepository.list().find((candidate) => candidate.id === identifier);
+        if (tank) {
+            return tank.ix;
+        }
+    }
+    return undefined;
+};
+const emitTelemetry = (tankRef, payload, source) => {
+    const tankIx = resolveTankIx(tankRef);
+    if (tankIx === undefined)
+        return;
+    const updated = tankRepository_1.tankRepository.applyTelemetry(tankIx, payload);
     if (!updated)
         return;
     telemetryEmitter.emit('telemetry', { tank: updated, source });
@@ -130,9 +149,14 @@ const handleModeMessage = (topic, message) => {
 const startMock = () => {
     (0, mockTelemetry_1.stopMockTelemetry)();
     mode = 'mock';
+    const tankIxs = tankRepository_1.tankRepository.list().map((tank) => tank.ix);
+    const options = tankIxs.length > 0 ? { tankIxs } : {};
     (0, mockTelemetry_1.startMockTelemetry)((payload) => {
-        emitTelemetry(payload.id, payload, 'mock');
-    });
+        const ref = payload.ix ?? payload.id;
+        if (ref === undefined)
+            return;
+        emitTelemetry(ref, payload, 'mock');
+    }, options);
 };
 const stopMock = () => {
     (0, mockTelemetry_1.stopMockTelemetry)();
@@ -172,10 +196,10 @@ const startLive = () => {
         try {
             const data = JSON.parse(rawMessage);
             const idFromTopic = topic.split('/')[1];
-            const tankId = data.id ?? idFromTopic;
-            if (!tankId)
+            const tankRef = data.ix ?? data.id ?? idFromTopic;
+            if (tankRef === undefined)
                 return;
-            emitTelemetry(tankId, data, 'mqtt');
+            emitTelemetry(tankRef, data, 'mqtt');
         }
         catch (error) {
             console.error('[MQTT] Impossible de parser le message', error);
@@ -216,16 +240,16 @@ exports.mqttGateway = {
         mode = nextMode;
         exports.mqttGateway.start();
     },
-    publishCommand: (tankId, command) => {
+    publishCommand: (tankIx, command) => {
         if (mode === 'mock') {
-            console.info('[MQTT mock] commande', tankId, command);
+            console.info('[MQTT mock] commande', tankIx, command);
             return;
         }
         if (!client) {
             console.warn('[MQTT] Client non initialisé');
             return;
         }
-        const topic = `${env_1.env.mqtt.topics.commands}/${tankId}`;
+        const topic = `${env_1.env.mqtt.topics.commands}/${tankIx}`;
         client.publish(topic, JSON.stringify(command), { qos: 1 });
     },
     publishGeneralMode: (cuverieName, modeValue) => {

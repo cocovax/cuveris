@@ -27,12 +27,12 @@ export function TankControls({ tank }: TankControlsProps) {
           id: config.id,
         })),
       )
-      .find((item) => item.id === tank.id)
-  }, [cuveries, tank.id])
+      .find((item) => item.ix === tank.ix)
+  }, [cuveries, tank.ix])
   const tankConfig = useConfigStore((state) =>
     state.cuveries
       .flatMap((cuverie) => cuverie.tanks.map((config) => ({ ...config, cuverieId: cuverie.id })))
-      .find((config) => config.id === tank.id),
+      .find((config) => config.ix === tank.ix),
   )
 
   useEffect(() => {
@@ -44,13 +44,13 @@ export function TankControls({ tank }: TankControlsProps) {
   }, [tank])
 
   const handleSetpoint = async () => {
-    await updateSetpoint(tank.id, Number(setpoint))
-    mqttGateway.publishCommand(tank.id, { type: 'setpoint', value: Number(setpoint) })
+    await updateSetpoint(tank.ix, Number(setpoint))
+    mqttGateway.publishCommand(tank.ix, { type: 'setpoint', value: Number(setpoint) })
   }
 
   const handleToggle = async () => {
-    await toggleRunning(tank.id, !tank.isRunning)
-    mqttGateway.publishCommand(tank.id, { type: 'running', value: !tank.isRunning })
+    await toggleRunning(tank.ix, !tank.isRunning)
+    mqttGateway.publishCommand(tank.ix, { type: 'running', value: !tank.isRunning })
   }
 
   const handleContents = async () => {
@@ -60,10 +60,10 @@ export function TankControls({ tank }: TankControlsProps) {
       volumeLiters: Number(volume) || tank.capacityLiters,
       notes,
     }
-    await updateContents(tank.id, {
+    await updateContents(tank.ix, {
       ...payload,
     })
-    mqttGateway.publishCommand(tank.id, { type: 'contents', value: payload })
+    mqttGateway.publishCommand(tank.ix, { type: 'contents', value: payload })
   }
 
   return (

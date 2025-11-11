@@ -63,7 +63,7 @@ function App() {
       >
         <Routes>
           <Route path="/" element={<DashboardPage />} />
-          <Route path="/cuves/:id" element={<TankDetailPage />} />
+          <Route path="/cuves/:ix" element={<TankDetailPage />} />
           <Route path="/cuveries/:id" element={<CuveriePage />} />
           <Route path="/alarmes" element={<AlarmsPage />} />
           <Route path="/historique" element={<HistoryPage />} />

@@ -5,8 +5,8 @@ export type TankUpdater = (tank: Tank) => Tank;
 export type AlarmUpdater = (alarm: Alarm) => Alarm;
 export interface TankStore {
     list(): Tank[];
-    getById(id: string): Tank | undefined;
-    update(id: string, updater: TankUpdater): Tank | undefined;
+    getByIx(ix: number): Tank | undefined;
+    update(ix: number, updater: TankUpdater): Tank | undefined;
     create(tank: Tank): Tank;
 }
 export interface AlarmStore {
@@ -19,8 +19,8 @@ export interface SettingsStore {
     update(payload: Partial<Settings>): Settings;
 }
 export interface TemperatureHistoryStore {
-    list(tankId: string, limit: number): TemperatureSample[];
-    append(tankId: string, sample: TemperatureSample): void;
+    list(tankIx: number, limit: number): TemperatureSample[];
+    append(tankIx: number, sample: TemperatureSample): void;
 }
 export interface EventLogStore {
     list(limit: number): EventLogEntry[];

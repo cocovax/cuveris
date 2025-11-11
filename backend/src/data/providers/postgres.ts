@@ -13,7 +13,7 @@ export class PostgresEventLogAdapter {
 
   async list(limit: number): Promise<EventLogEntry[]> {
     const result = await this.pool.query<EventLogEntry>(
-      `SELECT id, timestamp, tank_id AS "tankId", category, source, summary, details, metadata
+      `SELECT id, timestamp, tank_ix AS "tankIx", category, source, summary, details, metadata
        FROM event_log
        ORDER BY timestamp DESC
        LIMIT $1`,
@@ -29,7 +29,7 @@ export class PostgresEventLogAdapter {
       [
         entry.id,
         entry.timestamp,
-        entry.tankId ?? null,
+        entry.tankIx ?? null,
         entry.category,
         entry.source,
         entry.summary,
@@ -43,23 +43,23 @@ export class PostgresEventLogAdapter {
 export class PostgresTemperatureHistoryAdapter {
   constructor(private readonly pool: Pool) {}
 
-  async list(tankId: string, limit: number): Promise<TemperatureSample[]> {
+  async list(tankIx: number, limit: number): Promise<TemperatureSample[]> {
     const result = await this.pool.query(
       `SELECT timestamp, value
        FROM temperature_samples
-       WHERE tank_id = $1
+       WHERE tank_ix = $1
        ORDER BY timestamp DESC
        LIMIT $2`,
-      [tankId, limit],
+      [tankIx, limit],
     )
     return result.rows.reverse()
   }
 
-  async append(tankId: string, sample: TemperatureSample): Promise<void> {
+  async append(tankIx: number, sample: TemperatureSample): Promise<void> {
     await this.pool.query(
-      `INSERT INTO temperature_samples (tank_id, timestamp, value)
+      `INSERT INTO temperature_samples (tank_ix, timestamp, value)
        VALUES ($1, $2, $3)`,
-      [tankId, sample.timestamp, sample.value],
+      [tankIx, sample.timestamp, sample.value],
     )
   }
 }

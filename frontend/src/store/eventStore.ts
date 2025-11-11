@@ -4,7 +4,7 @@ import { fetchEventLog } from '../services/api'
 
 interface EventFilter {
   category?: EventLogEntry['category'] | 'all'
-  tankId?: string | 'all'
+  tankIx?: number | 'all'
   source?: EventLogEntry['source'] | 'all'
 }
 
@@ -22,7 +22,7 @@ export const useEventStore = create<EventState>((set, get) => ({
   loading: false,
   filters: {
     category: 'all',
-    tankId: 'all',
+    tankIx: 'all',
     source: 'all',
   },
   load: async (force = false) => {

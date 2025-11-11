@@ -9,7 +9,8 @@ import { useAuthStore } from '../store/authStore'
 import { useEventStore } from '../store/eventStore'
 import { useConfigStore } from '../store/configStore'
 
-type TelemetryListener = (payload: Partial<Tank> & { id: string }) => void
+type TelemetryPayload = Partial<Tank> & { ix: number; id?: string }
+type TelemetryListener = (payload: TelemetryPayload) => void
 
 export interface PublishOptions {
   retain?: boolean
@@ -28,9 +29,9 @@ const defaultPublishOptions: PublishOptions = {
   retain: false,
 }
 
-const getTopicForTank = (tankId: string, suffix: string) => `${tankId}/${suffix}`
+const getTopicForTank = (tankIx: number, suffix: string) => `${tankIx}/${suffix}`
 
-const emit = (payload: Partial<Tank> & { id: string }) => {
+const emit = (payload: TelemetryPayload) => {
   listeners.forEach((listener) => listener(payload))
   useMqttStore.getState().recordMessage()
 }
@@ -98,14 +99,17 @@ const startLive = () => {
 
   client.on('message', (topic, raw) => {
     try {
-      const payload = JSON.parse(raw.toString()) as Partial<Tank> & { id?: string }
-      if (!payload.id) {
-        const segments = topic.split('/')
-        const tankId = segments[1] ?? segments[0]
-        if (!tankId) return
-        payload.id = tankId
+      const payload = JSON.parse(raw.toString()) as Partial<Tank> & { id?: string; ix?: number }
+      const segments = topic.split('/')
+      const ixFromTopic = Number(segments[1] ?? segments[0])
+      if (Number.isFinite(ixFromTopic)) {
+        payload.ix = ixFromTopic
       }
-      emit(payload as Partial<Tank> & { id: string })
+      if (payload.ix === undefined) {
+        console.warn('[MQTT] Télémetrie ignorée, IX absent', topic)
+        return
+      }
+      emit(payload as TelemetryPayload)
     } catch (error) {
       console.error('Impossible de parser le message MQTT', error)
       useMqttStore.getState().setError('Message MQTT invalide')
@@ -205,9 +209,9 @@ const switchMode = (nextMode: MqttGatewayMode) => {
   startGateway(nextMode)
 }
 
-const publishCommand = (tankId: string, command: Record<string, unknown>, options: PublishOptions = {}) => {
+const publishCommand = (tankIx: number, command: Record<string, unknown>, options: PublishOptions = {}) => {
   if (mode === 'mock' || mode === 'socket') {
-    console.info('[MQTT mock] commande envoyée', tankId, command)
+    console.info('[MQTT mock] commande envoyée', tankIx, command)
     return
   }
 
@@ -216,7 +220,7 @@ const publishCommand = (tankId: string, command: Record<string, unknown>, option
     return
   }
 
-  const topic = `${mqttConfig.topics.commands}/${getTopicForTank(tankId, 'actions')}`
+  const topic = `${mqttConfig.topics.commands}/${getTopicForTank(tankIx, 'actions')}`
   client.publish(topic, JSON.stringify(command), { ...defaultPublishOptions, ...options })
 }
 

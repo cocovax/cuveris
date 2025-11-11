@@ -11,15 +11,27 @@ const TemperatureChart = lazy(() =>
 )
 
 export function TankDetailPage() {
-  const { id } = useParams<{ id: string }>()
+  const { ix: ixParam } = useParams<{ ix: string }>()
   const navigate = useNavigate()
-  const { tanks, selectTank, selectedTank, selectedTankLoading } = useTankStore()
+  const tanks = useTankStore((state) => state.tanks)
+  const selectTank = useTankStore((state) => state.selectTank)
+  const selectedTank = useTankStore((state) => state.selectedTank)
+  const selectedTankLoading = useTankStore((state) => state.selectedTankLoading)
   const cuveries = useConfigStore((state) => state.cuveries)
+  const selectedTankIx = selectedTank?.ix
 
   useEffect(() => {
-    if (!id) return
-    selectTank(id).catch(() => navigate('/'))
-  }, [id, selectTank, navigate])
+    if (ixParam === undefined) return
+    const parsed = Number(ixParam)
+    if (!Number.isFinite(parsed)) {
+      navigate('/')
+      return
+    }
+    if (selectedTankIx === parsed) return
+    selectTank(parsed).catch(() => navigate('/'))
+  }, [ixParam, selectedTankIx, selectTank, navigate])
+
+  const ix = ixParam ? Number(ixParam) : undefined
 
   if (selectedTankLoading || !selectedTank) {
     return (
@@ -31,7 +43,7 @@ export function TankDetailPage() {
     )
   }
 
-  const tank = selectedTank ?? tanks.find((item) => item.id === id)
+  const tank = selectedTank ?? tanks.find((item) => item.ix === ix)
   if (!tank) {
     return (
       <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center text-slate-500 shadow-sm">

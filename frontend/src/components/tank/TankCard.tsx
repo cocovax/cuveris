@@ -15,7 +15,7 @@ export function TankCard({ tank }: TankCardProps) {
 
   return (
     <Link
-      to={`/cuves/${tank.id}`}
+      to={`/cuves/${tank.ix}`}
       className="group relative flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg"
     >
       <div className="flex items-start justify-between">

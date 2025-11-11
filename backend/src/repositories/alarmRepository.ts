@@ -8,7 +8,7 @@ export const alarmRepository = {
     eventRepository.append({
       id: `alarm-${alarm.id}`,
       timestamp: alarm.triggeredAt,
-      tankId: alarm.tankId,
+      tankIx: alarm.tankIx,
       category: 'alarm',
       source: 'system',
       summary: alarm.message,
@@ -21,7 +21,7 @@ export const alarmRepository = {
       eventRepository.append({
         id: `alarm-ack-${id}-${Date.now()}`,
         timestamp: new Date().toISOString(),
-        tankId: alarm.tankId,
+        tankIx: alarm.tankIx,
         category: 'alarm',
         source: 'user',
         summary: `Alarme acquittée : ${alarm.message}`,

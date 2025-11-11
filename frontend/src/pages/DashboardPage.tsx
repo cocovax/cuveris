@@ -79,7 +79,7 @@ export function DashboardPage() {
               </header>
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {cuverieTanks.map((tank) => (
-                  <TankCard key={tank.id} tank={tank} />
+                  <TankCard key={tank.ix} tank={tank} />
                 ))}
                 {cuverieTanks.length === 0 && (
                   <div className="col-span-full rounded-2xl border border-slate-200 bg-white p-6 text-center text-slate-500 shadow-sm">
@@ -95,7 +95,7 @@ export function DashboardPage() {
           <h2 className="mb-4 text-lg font-semibold text-slate-900">Cuves</h2>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {tanks.map((tank) => (
-              <TankCard key={tank.id} tank={tank} />
+              <TankCard key={tank.ix} tank={tank} />
             ))}
           </div>
         </section>

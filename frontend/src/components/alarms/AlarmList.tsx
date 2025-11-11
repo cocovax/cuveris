@@ -38,7 +38,7 @@ export function AlarmList({ alarms, onAcknowledge }: AlarmListProps) {
         <tbody className="divide-y divide-slate-200 bg-white">
           {alarms.map((alarm) => (
             <tr key={alarm.id}>
-              <td className="px-4 py-3 font-medium text-slate-900">{alarm.tankId}</td>
+              <td className="px-4 py-3 font-medium text-slate-900">cuve/{alarm.tankIx}</td>
               <td className="px-4 py-3 text-slate-600">{alarm.message}</td>
               <td className="px-4 py-3">
                 <span

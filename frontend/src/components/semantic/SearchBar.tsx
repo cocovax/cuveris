@@ -34,9 +34,9 @@ export function SearchBar() {
         <div className="absolute z-10 mt-2 w-full rounded-md border border-slate-200 bg-white shadow-lg">
           <ul className="max-h-64 overflow-y-auto text-sm">
             {results.map((tank) => (
-              <li key={tank.id}>
+              <li key={tank.ix}>
                 <Link
-                  to={`/cuves/${tank.id}`}
+                  to={`/cuves/${tank.ix}`}
                   className="block px-3 py-2 hover:bg-slate-50"
                   onClick={() => setQuery('')}
                 >

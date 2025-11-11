@@ -20,7 +20,7 @@ export function EventTable() {
   const filtered = useMemo(() => {
     return events.filter((event) => {
       if (filters.category && filters.category !== 'all' && event.category !== filters.category) return false
-      if (filters.tankId && filters.tankId !== 'all' && event.tankId !== filters.tankId) return false
+      if (filters.tankIx !== undefined && filters.tankIx !== 'all' && event.tankIx !== filters.tankIx) return false
       if (filters.source && filters.source !== 'all' && event.source !== filters.source) return false
       return true
     })
@@ -71,7 +71,7 @@ export function EventTable() {
                 </span>
               </td>
               <td className="px-4 py-3 text-slate-600">{sourceLabel[event.source]}</td>
-              <td className="px-4 py-3 text-slate-600">{event.tankId ?? '—'}</td>
+              <td className="px-4 py-3 text-slate-600">{event.tankIx ?? '—'}</td>
               <td className="px-4 py-3 font-medium text-slate-900">{event.summary}</td>
               <td className="px-4 py-3 text-slate-500">{event.details ?? '—'}</td>
             </tr>

@@ -24,7 +24,7 @@ export function EventFilters() {
   const tankOptions = useMemo(
     () => [
       { value: 'all', label: 'Toutes les cuves' },
-      ...tanks.map((tank) => ({ value: tank.id, label: tank.name })),
+      ...tanks.map((tank) => ({ value: String(tank.ix), label: tank.name })),
     ],
     [tanks],
   )
@@ -39,8 +39,15 @@ export function EventFilters() {
       />
       <FilterSelect
         label="Cuve"
-        value={filters.tankId ?? 'all'}
-        onChange={(value) => setFilters({ ...filters, tankId: value as typeof filters.tankId })}
+        value={filters.tankIx === 'all' ? 'all' : String(filters.tankIx ?? 'all')}
+        onChange={(value) => {
+          const numeric = Number(value)
+          const tankIx = value === 'all' || !Number.isFinite(numeric) ? 'all' : numeric
+          setFilters({
+            ...filters,
+            tankIx,
+          })
+        }}
         options={tankOptions}
       />
       <FilterSelect

@@ -2,7 +2,7 @@ export type AlarmSeverity = 'info' | 'warning' | 'critical'
 
 export interface Alarm {
   id: string
-  tankId: string
+  tankIx: number
   message: string
   severity: AlarmSeverity
   triggeredAt: string

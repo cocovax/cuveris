@@ -15,8 +15,8 @@ export declare class PostgresEventLogAdapter {
 export declare class PostgresTemperatureHistoryAdapter {
     private readonly pool;
     constructor(pool: Pool);
-    list(tankId: string, limit: number): Promise<TemperatureSample[]>;
-    append(tankId: string, sample: TemperatureSample): Promise<void>;
+    list(tankIx: number, limit: number): Promise<TemperatureSample[]>;
+    append(tankIx: number, sample: TemperatureSample): Promise<void>;
 }
 export declare const createPostgresAdapters: (config: PostgresProviderConfig) => {
     events: PostgresEventLogAdapter;

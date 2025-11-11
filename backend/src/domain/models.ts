@@ -13,6 +13,7 @@ export interface TemperatureSample {
 }
 
 export interface Tank {
+  ix: number
   id: string
   name: string
   status: TankStatus
@@ -26,13 +27,14 @@ export interface Tank {
   history: TemperatureSample[]
   alarms: string[]
   cuverieId?: string
+  isDeleted: boolean
 }
 
 export type AlarmSeverity = 'info' | 'warning' | 'critical'
 
 export interface Alarm {
   id: string
-  tankId: string
+  tankIx: number
   severity: AlarmSeverity
   message: string
   triggeredAt: string

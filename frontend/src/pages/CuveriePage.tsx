@@ -46,7 +46,7 @@ export function CuveriePage() {
   }
 
   const tanksInCuverie = cuverie.tanks
-    .map((config) => tanks.find((tank) => tank.id === config.id))
+    .map((config) => tanks.find((tank) => tank.ix === config.ix))
     .filter((tank): tank is NonNullable<typeof tank> => Boolean(tank))
 
   return (
@@ -63,7 +63,7 @@ export function CuveriePage() {
         <h3 className="mb-4 text-lg font-semibold text-slate-900">Cuves ({tanksInCuverie.length})</h3>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {tanksInCuverie.map((tank) => (
-            <TankCard key={tank.id} tank={tank} />
+            <TankCard key={tank.ix} tank={tank} />
           ))}
         </div>
       </section>

@@ -4,16 +4,24 @@ exports.tankRepository = void 0;
 const dataContext_1 = require("../data/dataContext");
 const eventRepository_1 = require("./eventRepository");
 const ctx = () => (0, dataContext_1.getDataContext)();
-const updateTank = (id, updater) => {
-    return ctx().tanks.update(id, (tank) => {
+const updateTank = (ix, updater) => {
+    const existing = ctx().tanks.getByIx(ix);
+    if (!existing || existing.isDeleted) {
+        return undefined;
+    }
+    return ctx().tanks.update(ix, (tank) => {
+        if (tank.isDeleted) {
+            return tank;
+        }
         const updated = updater(tank);
         return {
             ...updated,
-            history: ctx().temperatureHistory.list(id, 48),
+            history: ctx().temperatureHistory.list(ix, 48),
         };
     });
 };
 const createTankFromConfig = (cuverieId, config) => ({
+    ix: config.ix,
     id: config.id,
     name: config.displayName,
     status: 'idle',
@@ -26,40 +34,46 @@ const createTankFromConfig = (cuverieId, config) => ({
     history: [],
     alarms: [],
     cuverieId,
+    isDeleted: false,
 });
 exports.tankRepository = {
-    list: () => ctx().tanks.list(),
-    getById: (id) => ctx().tanks.getById(id),
+    list: () => ctx().tanks.list().filter((tank) => !tank.isDeleted),
+    getByIx: (ix) => {
+        const tank = ctx().tanks.getByIx(ix);
+        return tank && !tank.isDeleted ? tank : undefined;
+    },
     upsertFromConfig: (cuverieId, config) => {
-        const existing = ctx().tanks.getById(config.id);
+        const existing = ctx().tanks.getByIx(config.ix);
         if (!existing) {
             const created = createTankFromConfig(cuverieId, config);
             ctx().tanks.create(created);
             return created;
         }
-        return ctx().tanks.update(config.id, (tank) => ({
+        return ctx().tanks.update(config.ix, (tank) => ({
             ...tank,
             name: config.displayName,
             cuverieId,
+            isDeleted: false,
         }));
     },
     removeMissing: (cuverieId, configs) => {
-        const ids = new Set(configs.map((tank) => tank.id));
+        const ixSet = new Set(configs.map((tank) => tank.ix));
         ctx()
             .tanks.list()
-            .filter((tank) => tank.cuverieId === cuverieId && !ids.has(tank.id))
+            .filter((tank) => tank.cuverieId === cuverieId && !ixSet.has(tank.ix))
             .forEach((tank) => {
-            ctx().tanks.update(tank.id, () => ({
+            ctx().tanks.update(tank.ix, () => ({
                 ...tank,
                 status: 'offline',
+                isDeleted: true,
             }));
         });
     },
-    updateSetpoint: (id, setpoint) => updateTank(id, (tank) => {
+    updateSetpoint: (ix, setpoint) => updateTank(ix, (tank) => {
         eventRepository_1.eventRepository.append({
             id: `cmd-setpoint-${Date.now()}`,
             timestamp: new Date().toISOString(),
-            tankId: id,
+            tankIx: tank.ix,
             category: 'command',
             source: 'user',
             summary: `Consigne mise à ${setpoint.toFixed(1)}°C`,
@@ -70,11 +84,11 @@ exports.tankRepository = {
             setpoint,
         };
     }),
-    updateRunning: (id, isRunning) => updateTank(id, (tank) => {
+    updateRunning: (ix, isRunning) => updateTank(ix, (tank) => {
         eventRepository_1.eventRepository.append({
             id: `cmd-running-${Date.now()}`,
             timestamp: new Date().toISOString(),
-            tankId: id,
+            tankIx: tank.ix,
             category: 'command',
             source: 'user',
             summary: isRunning ? 'Cuve démarrée' : 'Cuve arrêtée',
@@ -85,11 +99,11 @@ exports.tankRepository = {
             status: isRunning ? 'cooling' : 'idle',
         };
     }),
-    updateContents: (id, contents) => updateTank(id, (tank) => {
+    updateContents: (ix, contents) => updateTank(ix, (tank) => {
         eventRepository_1.eventRepository.append({
             id: `cmd-contents-${Date.now()}`,
             timestamp: new Date().toISOString(),
-            tankId: id,
+            tankIx: tank.ix,
             category: 'command',
             source: 'user',
             summary: 'Contenu mis à jour',
@@ -100,31 +114,36 @@ exports.tankRepository = {
             contents,
         };
     }),
-    applyTelemetry: (id, payload) => {
+    applyTelemetry: (ix, payload) => {
+        const current = ctx().tanks.getByIx(ix);
+        if (!current || current.isDeleted) {
+            return undefined;
+        }
         if (payload.temperature !== undefined) {
             const sample = {
                 timestamp: new Date().toISOString(),
                 value: payload.temperature,
             };
-            ctx().temperatureHistory.append(id, sample);
+            ctx().temperatureHistory.append(ix, sample);
             if (dataContext_1.postgresAdapters) {
                 void dataContext_1.postgresAdapters.temperatureHistory
-                    .append(id, sample)
+                    .append(ix, sample)
                     .catch((error) => console.error('[PostgresSync] Historique MQTT échoué', error));
             }
             eventRepository_1.eventRepository.append({
                 id: `telemetry-${Date.now()}`,
                 timestamp: sample.timestamp,
-                tankId: id,
+                tankIx: current.ix,
                 category: 'telemetry',
                 source: 'backend',
                 summary: `Télémetrie ${sample.value.toFixed(1)}°C`,
             });
         }
-        return updateTank(id, (tank) => ({
+        return updateTank(ix, (tank) => ({
             ...tank,
             ...payload,
-            history: ctx().temperatureHistory.list(id, 48),
+            history: ctx().temperatureHistory.list(ix, 48),
+            isDeleted: false,
         }));
     },
 };

@@ -17,7 +17,7 @@ export declare const mqttGateway: {
     start: () => void;
     stop: () => void;
     switchMode: (nextMode: MqttGatewayMode) => void;
-    publishCommand: (tankId: string, command: Record<string, unknown>) => void;
+    publishCommand: (tankIx: number, command: Record<string, unknown>) => void;
     publishGeneralMode: (cuverieName: string, modeValue: GeneralMode) => void;
     onTelemetry: (listener: TelemetryListener) => () => EventEmitter<[never]>;
     onConfig: (listener: ConfigListener) => () => EventEmitter<[never]>;

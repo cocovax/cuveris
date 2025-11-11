@@ -15,6 +15,7 @@ const useMocks = appConfig.enableMocks
 
 const MOCK_TANKS: Tank[] = [
   {
+    ix: 101,
     id: 'tank-01',
     name: 'Cuve 01',
     status: 'cooling',
@@ -28,8 +29,10 @@ const MOCK_TANKS: Tank[] = [
     alarms: [],
     history: generateHistory(18, 19.4),
     cuverieId: 'default',
+    isDeleted: false,
   },
   {
+    ix: 102,
     id: 'tank-02',
     name: 'Cuve 02',
     status: 'idle',
@@ -43,8 +46,10 @@ const MOCK_TANKS: Tank[] = [
     alarms: [],
     history: generateHistory(20.5, 22),
     cuverieId: 'default',
+    isDeleted: false,
   },
   {
+    ix: 103,
     id: 'tank-03',
     name: 'Cuve 03',
     status: 'alarm',
@@ -58,13 +63,14 @@ const MOCK_TANKS: Tank[] = [
     alarms: ['Température haute'],
     history: generateHistory(22.5, 26.2),
     cuverieId: 'default',
+    isDeleted: false,
   },
 ]
 
 const MOCK_ALARMS: Alarm[] = [
   {
     id: 'alarm-001',
-    tankId: 'tank-03',
+    tankIx: 103,
     message: 'Température supérieure au seuil haut (+2.8°C)',
     severity: 'critical',
     triggeredAt: new Date(Date.now() - 1000 * 60 * 12).toISOString(),
@@ -103,50 +109,54 @@ const MOCK_CUVERIES: CuverieConfig[] = [
 export async function fetchTanks(): Promise<Tank[]> {
   if (useMocks || !appConfig.apiUrl) {
     await simulateNetwork()
-    return structuredClone(MOCK_TANKS)
+    return structuredClone(MOCK_TANKS).filter((tank) => !tank.isDeleted)
   }
   const response = await httpClient.get<{ data: Tank[] }>('/api/tanks')
-  return response.data.data
+  return response.data.data.filter((tank) => !tank.isDeleted)
 }
 
-export async function fetchTankById(id: string): Promise<Tank | undefined> {
+export async function fetchTankByIx(ix: number): Promise<Tank | undefined> {
   if (useMocks || !appConfig.apiUrl) {
     await simulateNetwork()
-    return structuredClone(MOCK_TANKS.find((tank) => tank.id === id))
+    const tank = MOCK_TANKS.find((tank) => tank.ix === ix)
+    if (!tank || tank.isDeleted) return undefined
+    return structuredClone(tank)
   }
   try {
-    const response = await httpClient.get<{ data: Tank }>(`/api/tanks/${id}`)
-    return response.data.data
+    const response = await httpClient.get<{ data: Tank }>(`/api/tanks/${ix}`)
+    const tank = response.data.data
+    if (tank.isDeleted) return undefined
+    return tank
   } catch (error) {
-    console.warn('[API] Tank introuvable', id, error)
+    console.warn('[API] Tank introuvable', ix, error)
     return undefined
   }
 }
 
-export async function updateTankSetpoint(id: string, setpoint: number): Promise<Tank | undefined> {
+export async function updateTankSetpoint(ix: number, setpoint: number): Promise<Tank | undefined> {
   if (useMocks || !appConfig.apiUrl) {
     await simulateNetwork(250)
-    const tank = MOCK_TANKS.find((item) => item.id === id)
-    if (!tank) return undefined
+    const tank = MOCK_TANKS.find((item) => item.ix === ix)
+    if (!tank || tank.isDeleted) return undefined
     tank.setpoint = setpoint
     tank.lastUpdatedAt = new Date().toISOString()
     return structuredClone(tank)
   }
-  const response = await httpClient.post<{ data: Tank }>(`/api/tanks/${id}/setpoint`, { value: setpoint })
+  const response = await httpClient.post<{ data: Tank }>(`/api/tanks/${ix}/setpoint`, { value: setpoint })
   return response.data.data
 }
 
-export async function toggleTank(id: string, isRunning: boolean): Promise<Tank | undefined> {
+export async function toggleTank(ix: number, isRunning: boolean): Promise<Tank | undefined> {
   if (useMocks || !appConfig.apiUrl) {
     await simulateNetwork(250)
-    const tank = MOCK_TANKS.find((item) => item.id === id)
-    if (!tank) return undefined
+    const tank = MOCK_TANKS.find((item) => item.ix === ix)
+    if (!tank || tank.isDeleted) return undefined
     tank.isRunning = isRunning
     tank.status = isRunning ? 'cooling' : 'idle'
     tank.lastUpdatedAt = new Date().toISOString()
     return structuredClone(tank)
   }
-  const response = await httpClient.post<{ data: Tank }>(`/api/tanks/${id}/running`, { value: isRunning })
+  const response = await httpClient.post<{ data: Tank }>(`/api/tanks/${ix}/running`, { value: isRunning })
   return response.data.data
 }
 
@@ -171,31 +181,32 @@ export async function acknowledgeAlarm(id: string): Promise<Alarm | undefined> {
   return response.data.data
 }
 
-export async function fetchTankHistory(id: string): Promise<TemperatureReading[]> {
+export async function fetchTankHistory(ix: number): Promise<TemperatureReading[]> {
   if (useMocks || !appConfig.apiUrl) {
     await simulateNetwork()
-    const tank = MOCK_TANKS.find((item) => item.id === id)
-    return structuredClone(tank?.history ?? [])
+    const tank = MOCK_TANKS.find((item) => item.ix === ix)
+    if (!tank || tank.isDeleted) return []
+    return structuredClone(tank.history ?? [])
   }
   try {
-    const response = await httpClient.get<{ data: Tank }>(`/api/tanks/${id}`)
+    const response = await httpClient.get<{ data: Tank }>(`/api/tanks/${ix}`)
     return response.data.data.history ?? []
   } catch (error) {
-    console.warn('[API] Historique indisponible pour la cuve', id, error)
+    console.warn('[API] Historique indisponible pour la cuve', ix, error)
     return []
   }
 }
 
-export async function updateTankContents(id: string, contents: TankContents): Promise<Tank | undefined> {
+export async function updateTankContents(ix: number, contents: TankContents): Promise<Tank | undefined> {
   if (useMocks || !appConfig.apiUrl) {
     await simulateNetwork(250)
-    const tank = MOCK_TANKS.find((item) => item.id === id)
-    if (!tank) return undefined
+    const tank = MOCK_TANKS.find((item) => item.ix === ix)
+    if (!tank || tank.isDeleted) return undefined
     tank.contents = { ...contents }
     tank.lastUpdatedAt = new Date().toISOString()
     return structuredClone(tank)
   }
-  const response = await httpClient.post<{ data: Tank }>(`/api/tanks/${id}/contents`, contents)
+  const response = await httpClient.post<{ data: Tank }>(`/api/tanks/${ix}/contents`, contents)
   return response.data.data
 }
 
@@ -207,7 +218,7 @@ export async function fetchEventLog(limit = 100): Promise<EventLogEntry[]> {
       timestamp: new Date(Date.now() - index * 60_000).toISOString(),
       category: index % 3 === 0 ? 'command' : index % 3 === 1 ? 'telemetry' : 'alarm',
       source: index % 2 === 0 ? 'user' : 'system',
-      tankId: index % 2 === 0 ? 'tank-01' : 'tank-02',
+      tankIx: index % 2 === 0 ? 101 : 102,
       summary:
         index % 3 === 0
           ? 'Modification consigne'

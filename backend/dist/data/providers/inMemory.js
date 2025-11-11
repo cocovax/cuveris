@@ -19,6 +19,7 @@ const generateHistory = (min, max, points = 48) => {
 };
 const seedTanks = [
     {
+        ix: 101,
         id: 'tank-01',
         name: 'Cuve 01',
         status: 'cooling',
@@ -32,8 +33,10 @@ const seedTanks = [
         history: [],
         alarms: [],
         cuverieId: 'default',
+        isDeleted: false,
     },
     {
+        ix: 102,
         id: 'tank-02',
         name: 'Cuve 02',
         status: 'idle',
@@ -47,8 +50,10 @@ const seedTanks = [
         history: [],
         alarms: [],
         cuverieId: 'default',
+        isDeleted: false,
     },
     {
+        ix: 103,
         id: 'tank-03',
         name: 'Cuve 03',
         status: 'alarm',
@@ -62,12 +67,13 @@ const seedTanks = [
         history: [],
         alarms: ['Température haute'],
         cuverieId: 'default',
+        isDeleted: false,
     },
 ];
 const seedAlarms = [
     {
         id: 'alarm-001',
-        tankId: 'tank-03',
+        tankIx: 103,
         severity: 'critical',
         message: 'Température supérieure au seuil haut (+2.9°C)',
         triggeredAt: new Date(Date.now() - 1_800_000).toISOString(),
@@ -109,8 +115,8 @@ const generalModes = new Map();
 const initialise = () => {
     seedTanks.forEach((tank) => {
         const history = generateHistory(tank.temperature - 1, tank.temperature + 1.5);
-        historyMap.set(tank.id, history);
-        tanksMap.set(tank.id, { ...tank, history: [] });
+        historyMap.set(tank.ix, history);
+        tanksMap.set(tank.ix, { ...tank, history: [] });
     });
     seedAlarms.forEach((alarm) => alarmsList.push({ ...alarm }));
     const defaultCuverie = {
@@ -128,33 +134,33 @@ const initialise = () => {
 };
 initialise();
 const buildTankStore = () => ({
-    list: () => Array.from(tanksMap.values()).map((tank) => cloneTank(tank, historyMap.get(tank.id) ?? [])),
-    getById: (id) => {
-        const tank = tanksMap.get(id);
+    list: () => Array.from(tanksMap.values()).map((tank) => cloneTank(tank, historyMap.get(tank.ix) ?? [])),
+    getByIx: (ix) => {
+        const tank = tanksMap.get(ix);
         if (!tank)
             return undefined;
-        const history = historyMap.get(id) ?? [];
+        const history = historyMap.get(ix) ?? [];
         return cloneTank(tank, history);
     },
-    update: (id, updater) => {
-        const current = tanksMap.get(id);
+    update: (ix, updater) => {
+        const current = tanksMap.get(ix);
         if (!current)
             return undefined;
-        const history = historyMap.get(id) ?? [];
+        const history = historyMap.get(ix) ?? [];
         const candidate = cloneTank(current, history);
         const updated = updater(candidate);
-        historyMap.set(id, [...updated.history]);
+        historyMap.set(ix, [...updated.history]);
         const stored = {
             ...updated,
             history: [],
             lastUpdatedAt: now(),
         };
-        tanksMap.set(id, stored);
-        return cloneTank(stored, historyMap.get(id) ?? []);
+        tanksMap.set(ix, stored);
+        return cloneTank(stored, historyMap.get(ix) ?? []);
     },
     create: (tank) => {
-        tanksMap.set(tank.id, { ...tank, history: [] });
-        historyMap.set(tank.id, [...tank.history]);
+        tanksMap.set(tank.ix, { ...tank, history: [] });
+        historyMap.set(tank.ix, [...tank.history]);
         return cloneTank(tank, tank.history);
     },
 });
@@ -198,19 +204,19 @@ const buildSettingsStore = () => ({
     },
 });
 const buildHistoryStore = () => ({
-    list: (tankId, limit) => {
-        const history = historyMap.get(tankId) ?? [];
+    list: (tankIx, limit) => {
+        const history = historyMap.get(tankIx) ?? [];
         if (history.length <= limit)
             return [...history];
         return history.slice(history.length - limit);
     },
-    append: (tankId, sample) => {
-        const history = historyMap.get(tankId) ?? [];
+    append: (tankIx, sample) => {
+        const history = historyMap.get(tankIx) ?? [];
         history.push(sample);
-        historyMap.set(tankId, history.slice(-48));
-        const tank = tanksMap.get(tankId);
+        historyMap.set(tankIx, history.slice(-48));
+        const tank = tanksMap.get(tankIx);
         if (tank) {
-            tanksMap.set(tankId, { ...tank, lastUpdatedAt: sample.timestamp });
+            tanksMap.set(tankIx, { ...tank, lastUpdatedAt: sample.timestamp });
         }
     },
 });

@@ -1,27 +1,27 @@
 import { type Tank } from '../types'
 
-type TelemetryEmitter = (payload: Partial<Tank> & { id: string }) => void
+type TelemetryEmitter = (payload: Partial<Tank> & { ix: number; id?: string }) => void
 
 interface MockTelemetryOptions {
   intervalMs?: number
-  tankIds?: string[]
+  tankIxs?: number[]
 }
 
-const DEFAULT_IDS = ['tank-01', 'tank-02', 'tank-03']
+const DEFAULT_IXS = [101, 102, 103]
 
 let timer: ReturnType<typeof setInterval> | undefined
 
 export function startMockTelemetry(emitter: TelemetryEmitter, options: MockTelemetryOptions = {}) {
   stopMockTelemetry()
-  const { intervalMs = 5000, tankIds = DEFAULT_IDS } = options
+  const { intervalMs = 5000, tankIxs = DEFAULT_IXS } = options
 
   timer = setInterval(() => {
-    const tankId = tankIds[Math.floor(Math.random() * tankIds.length)]
+    const tankIx = tankIxs[Math.floor(Math.random() * tankIxs.length)]
     const base = 20 + Math.random() * 5
     const temperature = Number((base + (Math.random() - 0.5)).toFixed(2))
 
     emitter({
-      id: tankId,
+      ix: tankIx,
       temperature,
       lastUpdatedAt: new Date().toISOString(),
     })
