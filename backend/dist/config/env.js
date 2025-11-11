@@ -24,6 +24,7 @@ const envSchema = zod_1.z.object({
     DATA_PROVIDER: zod_1.z.enum(['memory', 'postgres']).optional(),
     DATABASE_URL: zod_1.z.string().optional(),
     TIMESERIES_DATABASE_URL: zod_1.z.string().optional(),
+    CORS_ORIGIN: zod_1.z.string().optional(),
 });
 const parsed = envSchema.safeParse(process.env);
 if (!parsed.success) {
@@ -68,5 +69,6 @@ exports.env = {
         databaseUrl: parsed.data.DATABASE_URL,
         timeseriesUrl: parsed.data.TIMESERIES_DATABASE_URL ?? parsed.data.DATABASE_URL,
     },
+    corsOrigin: parsed.data.CORS_ORIGIN,
 };
 //# sourceMappingURL=env.js.map

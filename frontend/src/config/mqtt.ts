@@ -40,6 +40,7 @@ export const mqttConfig: MqttConfig = {
 
 export const determineGatewayMode = (): MqttGatewayMode => {
   if (appConfig.realtimeMode === 'socket') return 'socket'
+  if (appConfig.realtimeMode === 'mock') return 'mock'
   if (!mqttConfig.url) return 'mock'
   return mqttConfig.enableMock ? 'mock' : 'live'
 }

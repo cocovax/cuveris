@@ -10,13 +10,14 @@ services:
       DATA_PROVIDER: postgres
       DATABASE_URL: postgres://cuve_user:cuve_password@postgres:5432/cuvedb
       TIMESERIES_DATABASE_URL: postgres://cuve_user:cuve_password@postgres:5432/cuvedb
-      MQTT_URL: ws://mqtt:1883
+      MQTT_URL: mqtt://mqtt:1883
       MQTT_USERNAME: ""
       MQTT_PASSWORD: ""
       ENABLE_MQTT_MOCK: "false"
       AUTH_SECRET: super-secret-key
       DEMO_USER_EMAIL: demo@cuverie.local
       DEMO_USER_PASSWORD: cuverie
+      CORS_ORIGIN: http://localhost:5173,http://localhost:5174
     ports:
       - "4000:4000"
     depends_on:
@@ -28,22 +29,29 @@ services:
       context: ./frontend
       args:
         VITE_API_URL: ${VITE_API_URL-http://localhost:4000}
+        VITE_MQTT_URL: ${VITE_MQTT_URL-ws://localhost:9001}
+        VITE_REALTIME_MODE: ${VITE_REALTIME_MODE-mqtt}
+        VITE_ENABLE_MOCKS: ${VITE_ENABLE_MOCKS-false}
     environment:
-      - VITE_API_URL=${VITE_API_URL-http://localhost:4000}
+      VITE_API_URL: ${VITE_API_URL-http://localhost:4000}
+      VITE_MQTT_URL: ${VITE_MQTT_URL-ws://localhost:9001}
+      VITE_REALTIME_MODE: ${VITE_REALTIME_MODE-mqtt}
+      VITE_ENABLE_MOCKS: ${VITE_ENABLE_MOCKS-false}
     ports:
-      - "5173:80"
+      - "5174:80"
     depends_on:
       - backend
 
   mqtt:
     image: eclipse-mosquitto:2
+    restart: unless-stopped
     ports:
       - "1883:1883"
       - "9001:9001"
     volumes:
       - mosquitto-data:/mosquitto/data
-      - mosquitto-config:/mosquitto/config
       - mosquitto-log:/mosquitto/log
+      - ./docker/mqtt/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
 
   postgres:
     image: timescale/timescaledb:2.13.1-pg15
@@ -59,7 +67,6 @@ services:
 
 volumes:
   mosquitto-data:
-  mosquitto-config:
   mosquitto-log:
   pg-data:
 

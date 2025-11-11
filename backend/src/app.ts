@@ -14,9 +14,19 @@ import { mqttGateway } from './services/mqttGateway'
 
 export const createApp = () => {
   const app = express()
+  const allowedOrigins =
+    env.corsOrigin?.split(',').map((origin) => origin.trim()).filter(Boolean) ??
+    (env.nodeEnv === 'development' ? ['*'] : ['http://localhost:5173'])
+
   app.use(
     cors({
-      origin: env.nodeEnv === 'development' ? '*' : undefined,
+      origin: (origin, callback) => {
+        if (!origin || allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
+          callback(null, true)
+        } else {
+          callback(new Error(`Origin ${origin} not allowed by CORS`))
+        }
+      },
       allowedHeaders: ['Content-Type', 'Authorization'],
     }),
   )

@@ -25,6 +25,7 @@ export declare const env: {
         databaseUrl: string | undefined;
         timeseriesUrl: string | undefined;
     };
+    corsOrigin: string | undefined;
 };
 export type AppEnv = typeof env;
 //# sourceMappingURL=env.d.ts.map
