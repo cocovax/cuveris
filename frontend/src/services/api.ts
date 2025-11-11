@@ -3,6 +3,7 @@ import {
   type CuverieConfig,
   type EventLogEntry,
   type GeneralMode,
+  type SettingsState,
   type Tank,
   type TankContents,
   type TemperatureReading,
@@ -113,8 +114,13 @@ export async function fetchTankById(id: string): Promise<Tank | undefined> {
     await simulateNetwork()
     return structuredClone(MOCK_TANKS.find((tank) => tank.id === id))
   }
-  const response = await httpClient.get<{ data: Tank }>(`/api/tanks/${id}`)
-  return response.data.data
+  try {
+    const response = await httpClient.get<{ data: Tank }>(`/api/tanks/${id}`)
+    return response.data.data
+  } catch (error) {
+    console.warn('[API] Tank introuvable', id, error)
+    return undefined
+  }
 }
 
 export async function updateTankSetpoint(id: string, setpoint: number): Promise<Tank | undefined> {
@@ -171,8 +177,13 @@ export async function fetchTankHistory(id: string): Promise<TemperatureReading[]
     const tank = MOCK_TANKS.find((item) => item.id === id)
     return structuredClone(tank?.history ?? [])
   }
-  const response = await httpClient.get<{ data: Tank }>(`/api/tanks/${id}`)
-  return response.data.data.history ?? []
+  try {
+    const response = await httpClient.get<{ data: Tank }>(`/api/tanks/${id}`)
+    return response.data.data.history ?? []
+  } catch (error) {
+    console.warn('[API] Historique indisponible pour la cuve', id, error)
+    return []
+  }
 }
 
 export async function updateTankContents(id: string, contents: TankContents): Promise<Tank | undefined> {
@@ -238,5 +249,53 @@ export async function setCuverieMode(cuverieId: string, mode: GeneralMode): Prom
     mode,
   })
   return response.data.data.mode
+}
+
+export async function fetchSettingsState(): Promise<SettingsState> {
+  if (useMocks || !appConfig.apiUrl) {
+    await simulateNetwork()
+    return {
+      alarmThresholds: { high: 26, low: 16 },
+      preferences: { locale: 'fr-FR', temperatureUnit: 'C', theme: 'auto' },
+      mqtt: {
+        url: undefined,
+        username: undefined,
+        password: undefined,
+        reconnectPeriod: 2000,
+        enableMock: true,
+      },
+    }
+  }
+  const response = await httpClient.get<{ data: SettingsState }>('/api/settings')
+  return response.data.data
+}
+
+type SettingsUpdatePayload = {
+  alarmThresholds?: Partial<SettingsState['alarmThresholds']>
+  preferences?: Partial<SettingsState['preferences']>
+  mqtt?: Partial<SettingsState['mqtt']>
+}
+
+export async function updateSettingsState(payload: SettingsUpdatePayload): Promise<SettingsState> {
+  if (useMocks || !appConfig.apiUrl) {
+    await simulateNetwork(200)
+    const current = await fetchSettingsState()
+    return {
+      alarmThresholds: {
+        ...current.alarmThresholds,
+        ...(payload.alarmThresholds ?? {}),
+      },
+      preferences: {
+        ...current.preferences,
+        ...(payload.preferences ?? {}),
+      },
+      mqtt: {
+        ...current.mqtt,
+        ...(payload.mqtt ?? {}),
+      },
+    }
+  }
+  const response = await httpClient.patch<{ data: SettingsState }>('/api/settings', payload)
+  return response.data.data
 }
 

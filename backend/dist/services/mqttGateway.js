@@ -41,14 +41,17 @@ const normalizeCuverieId = (name) => {
         .replace(/[^\w\s-]/g, '')
         .replace(/\s+/g, '-');
 };
-const normalizeTankId = (cuverieId, tank) => {
-    if (tank.ID !== undefined) {
-        return `${cuverieId}-tank-${tank.ID}`;
+const formatTankId = (cuverieId, baseId, fallbackName, index) => {
+    const normalizedBase = Number.isFinite(baseId) ? baseId : index + 1;
+    const padded = String(normalizedBase).padStart(2, '0');
+    if (cuverieId === 'default') {
+        return `tank-${padded}`;
     }
-    if (tank.IX !== undefined) {
-        return `${cuverieId}-ix-${tank.IX}`;
-    }
-    return `${cuverieId}-${(tank.Nom ?? 'tank').toLowerCase().replace(/\s+/g, '-')}`;
+    return `${cuverieId}-tank-${padded}`;
+};
+const normalizeTankId = (cuverieId, tank, index) => {
+    const base = tank.ID ?? tank.IX ?? index + 1;
+    return formatTankId(cuverieId, base, tank.Nom ?? 'tank', index);
 };
 const parseCuverieMessage = (payload) => {
     const entries = Array.isArray(payload) ? payload : [payload];
@@ -66,7 +69,7 @@ const parseCuverieMessage = (payload) => {
                 return undefined;
             const typed = tank;
             return {
-                id: normalizeTankId(cuverieId, typed),
+                id: normalizeTankId(cuverieId, typed, index),
                 ix: typed.IX ?? typed.ID ?? index,
                 displayName: typed.Nom ?? `Cuve ${index + 1}`,
                 order: typed.ID ?? index,

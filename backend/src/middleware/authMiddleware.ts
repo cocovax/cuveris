@@ -21,3 +21,15 @@ export const authenticate = (req: Request, res: Response, next: NextFunction) =>
   return next()
 }
 
+export const requireRole = (role: 'operator' | 'supervisor') => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Non authentifié' })
+    }
+    if (req.user.role !== role) {
+      return res.status(403).json({ error: 'Accès refusé' })
+    }
+    return next()
+  }
+}
+

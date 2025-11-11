@@ -13,6 +13,7 @@ import {
 import { type Alarm, type Settings, type Tank, type TemperatureSample } from '../../domain/models'
 import { type EventLogEntry } from '../../domain/eventLog'
 import { type CuverieConfig, type GeneralMode } from '../../domain/config'
+import { env } from '../../config/env'
 
 const now = () => new Date().toISOString()
 
@@ -100,6 +101,13 @@ const seedSettings: Settings = {
     locale: 'fr-FR',
     temperatureUnit: 'C',
     theme: 'auto',
+  },
+  mqtt: {
+    url: env.mqtt.url,
+    username: env.mqtt.username,
+    password: env.mqtt.password,
+    reconnectPeriod: env.mqtt.reconnectPeriod,
+    enableMock: env.mqtt.enableMock,
   },
 }
 
@@ -195,6 +203,10 @@ const buildSettingsStore = (): SettingsStore => ({
       preferences: {
         ...storedSettings.preferences,
         ...(payload.preferences ?? {}),
+      },
+      mqtt: {
+        ...storedSettings.mqtt,
+        ...(payload.mqtt ?? {}),
       },
     }
     return structuredClone(storedSettings)

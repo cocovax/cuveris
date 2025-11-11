@@ -26,7 +26,7 @@ interface TankState {
   acknowledgeAlarm: (id: string) => Promise<void>
 }
 
-export const useTankStore = create<TankState>((set) => ({
+export const useTankStore = create<TankState>((set, get) => ({
   tanks: [],
   alarms: [],
   loading: true,
@@ -47,8 +47,16 @@ export const useTankStore = create<TankState>((set) => ({
   selectTank: async (id: string) => {
     set({ selectedTankLoading: true })
     try {
-      const tank = await fetchTankById(id)
-      if (!tank) return
+      let tank = await fetchTankById(id)
+      if (!tank) {
+        const local = get().tanks.find((item: Tank) => item.id === id)
+        if (!local) {
+          return
+        }
+        const history = await fetchTankHistory(id)
+        set({ selectedTank: { ...local, history } })
+        return
+      }
       const history = await fetchTankHistory(id)
       set({ selectedTank: { ...tank, history } })
     } finally {

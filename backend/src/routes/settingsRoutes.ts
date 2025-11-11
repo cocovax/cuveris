@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { settingsRepository } from '../repositories/settingsRepository'
 import { type Settings } from '../domain/models'
+import { requireRole } from '../middleware/authMiddleware'
 
 const settingsSchema = z.object({
   alarmThresholds: z
@@ -19,15 +20,25 @@ const settingsSchema = z.object({
     })
     .partial()
     .optional(),
+  mqtt: z
+    .object({
+      url: z.string().url().optional(),
+      username: z.string().optional(),
+      password: z.string().optional(),
+      reconnectPeriod: z.number().int().positive().optional(),
+      enableMock: z.boolean().optional(),
+    })
+    .partial()
+    .optional(),
 })
 
 export const settingsRoutes = Router()
 
-settingsRoutes.get('/', (_req, res) => {
+settingsRoutes.get('/', requireRole('supervisor'), (_req, res) => {
   res.json({ data: settingsRepository.get() })
 })
 
-settingsRoutes.patch('/', (req, res) => {
+settingsRoutes.patch('/', requireRole('supervisor'), (req, res) => {
   const parsed = settingsSchema.safeParse(req.body)
   if (!parsed.success) {
     return res.status(400).json({ error: 'Payload invalide', details: parsed.error.flatten().fieldErrors })
@@ -56,6 +67,25 @@ settingsRoutes.patch('/', (req, res) => {
       preferences.theme = parsed.data.preferences.theme
     }
     payload.preferences = preferences
+  }
+  if (parsed.data.mqtt) {
+    const mqtt = { ...current.mqtt }
+    if (parsed.data.mqtt.url !== undefined) {
+      mqtt.url = parsed.data.mqtt.url
+    }
+    if (parsed.data.mqtt.username !== undefined) {
+      mqtt.username = parsed.data.mqtt.username
+    }
+    if (parsed.data.mqtt.password !== undefined) {
+      mqtt.password = parsed.data.mqtt.password
+    }
+    if (parsed.data.mqtt.reconnectPeriod !== undefined) {
+      mqtt.reconnectPeriod = parsed.data.mqtt.reconnectPeriod
+    }
+    if (parsed.data.mqtt.enableMock !== undefined) {
+      mqtt.enableMock = parsed.data.mqtt.enableMock
+    }
+    payload.mqtt = mqtt
   }
   const updated = settingsRepository.update(payload)
   res.json({ data: updated })

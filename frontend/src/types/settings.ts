@@ -14,5 +14,12 @@ export interface UserPreferences {
 export interface SettingsState {
   alarmThresholds: AlarmThresholds
   preferences: UserPreferences
+  mqtt: {
+    url?: string
+    username?: string
+    password?: string
+    reconnectPeriod: number
+    enableMock: boolean
+  }
 }
 
