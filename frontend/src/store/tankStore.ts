@@ -79,10 +79,16 @@ export const useTankStore = create<TankState>((set, get) => ({
   applyTelemetry: (payload) => {
     console.log('[TankStore] applyTelemetry appelée pour cuve', payload.ix, 'payload:', payload)
     set((state) => {
+      // Toujours créer un nouveau tableau pour forcer la détection de changement
       const tanks = state.tanks
         .map((tank) => {
           if (tank.ix === payload.ix) {
-            const updated = { ...tank, ...payload, lastUpdatedAt: payload.lastUpdatedAt ?? new Date().toISOString() }
+            // Créer un nouvel objet avec toutes les propriétés pour forcer la détection
+            const updated = {
+              ...tank,
+              ...payload,
+              lastUpdatedAt: payload.lastUpdatedAt ?? new Date().toISOString(),
+            }
             console.log('[TankStore] Cuve mise à jour:', updated.ix, 'temp:', updated.temperature)
             return updated
           }
@@ -116,7 +122,8 @@ export const useTankStore = create<TankState>((set, get) => ({
       }
 
       console.log('[TankStore] État mis à jour, tanks:', tanks.length, 'selectedTank:', selectedTank?.ix)
-      return { tanks, selectedTank }
+      // Toujours retourner un nouvel objet pour forcer la détection
+      return { ...state, tanks, selectedTank }
     })
   },
 

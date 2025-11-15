@@ -1,13 +1,32 @@
 import { Link } from 'react-router-dom'
 import { type Tank } from '../../types'
 import { useConfigStore } from '../../store/configStore'
+import { useTankStore } from '../../store/tankStore'
+import { useShallow } from 'zustand/react/shallow'
 import { TankStatusPill } from './TankStatusPill'
 
 interface TankCardProps {
   tank: Tank
 }
 
-export function TankCard({ tank }: TankCardProps) {
+export function TankCard({ tank: initialTank }: TankCardProps) {
+  // S'abonner directement au store pour cette cuve pour avoir les mises à jour en temps réel
+  // Sélectionner directement les propriétés qui nous intéressent pour forcer la détection de changement
+  const tankData = useTankStore(
+    useShallow((state) => {
+      const found = state.tanks.find((t) => t.ix === initialTank.ix)
+      if (!found) return initialTank
+      // Retourner un nouvel objet avec les propriétés importantes pour forcer la détection
+      return {
+        ...found,
+        temperature: found.temperature,
+        setpoint: found.setpoint,
+        status: found.status,
+        lastUpdatedAt: found.lastUpdatedAt,
+      }
+    })
+  )
+  const tank = tankData
   const cuverieName =
     useConfigStore((state) => state.cuveries.find((cuverie) => cuverie.id === tank.cuverieId)?.name) ?? null
   

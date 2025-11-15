@@ -45,9 +45,12 @@ export function CuveriePage() {
     )
   }
 
-  const tanksInCuverie = cuverie.tanks
-    .map((config) => tanks.find((tank) => tank.ix === config.ix))
-    .filter((tank): tank is NonNullable<typeof tank> => Boolean(tank))
+  // Utiliser useMemo pour éviter les recalculs inutiles, mais s'abonner au store
+  const tanksInCuverie = useMemo(() => {
+    return cuverie.tanks
+      .map((config) => tanks.find((tank) => tank.ix === config.ix))
+      .filter((tank): tank is NonNullable<typeof tank> => Boolean(tank))
+  }, [cuverie.tanks, tanks])
 
   return (
     <div className="space-y-6">
@@ -63,7 +66,7 @@ export function CuveriePage() {
         <h3 className="mb-4 text-lg font-semibold text-slate-900">Cuves ({tanksInCuverie.length})</h3>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {tanksInCuverie.map((tank) => (
-            <TankCard key={`${tank.ix}-${tank.temperature}-${tank.setpoint}-${tank.lastUpdatedAt}`} tank={tank} />
+            <TankCard key={tank.ix} tank={tank} />
           ))}
         </div>
       </section>

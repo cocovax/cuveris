@@ -1,6 +1,7 @@
 import { Suspense, lazy, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useTankStore } from '../store/tankStore'
+import { useShallow } from 'zustand/react/shallow'
 import { useConfigStore } from '../store/configStore'
 import { TankStatusPill } from '../components/tank/TankStatusPill'
 import { TankControls } from '../components/tank/TankControls'
@@ -13,12 +14,10 @@ const TemperatureChart = lazy(() =>
 export function TankDetailPage() {
   const { ix: ixParam } = useParams<{ ix: string }>()
   const navigate = useNavigate()
-  const tanks = useTankStore((state) => state.tanks)
   const selectTank = useTankStore((state) => state.selectTank)
-  const selectedTank = useTankStore((state) => state.selectedTank)
   const selectedTankLoading = useTankStore((state) => state.selectedTankLoading)
+  const selectedTankIx = useTankStore((state) => state.selectedTank?.ix)
   const cuveries = useConfigStore((state) => state.cuveries)
-  const selectedTankIx = selectedTank?.ix
 
   useEffect(() => {
     if (ixParam === undefined) return
@@ -33,7 +32,27 @@ export function TankDetailPage() {
 
   const ix = ixParam ? Number(ixParam) : undefined
 
-  if (selectedTankLoading || !selectedTank) {
+  // S'abonner directement au store pour cette cuve pour avoir les mises à jour en temps réel
+  // Utiliser selectedTank si disponible, sinon chercher dans tanks
+  // Sélectionner directement les propriétés importantes pour forcer la détection
+  const tank = useTankStore(
+    useShallow((state) => {
+      if (ix === undefined) return undefined
+      const found = state.selectedTank?.ix === ix ? state.selectedTank : state.tanks.find((t) => t.ix === ix)
+      if (!found) return undefined
+      // Retourner un nouvel objet avec les propriétés importantes pour forcer la détection
+      return {
+        ...found,
+        temperature: found.temperature,
+        setpoint: found.setpoint,
+        status: found.status,
+        lastUpdatedAt: found.lastUpdatedAt,
+        history: found.history,
+      }
+    })
+  )
+
+  if (selectedTankLoading || (!tank && ix !== undefined)) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-44 rounded-2xl" />
@@ -43,8 +62,7 @@ export function TankDetailPage() {
     )
   }
 
-  const tank = selectedTank ?? tanks.find((item) => item.ix === ix)
-  if (!tank) {
+  if (!tank || !ix) {
     return (
       <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center text-slate-500 shadow-sm">
         Cuve introuvable
@@ -52,11 +70,8 @@ export function TankDetailPage() {
     )
   }
 
-  // Forcer le re-render quand la température ou la consigne change
-  const tankKey = `${tank.ix}-${tank.temperature}-${tank.setpoint}-${tank.lastUpdatedAt}`
-
   return (
-    <div key={tankKey} className="space-y-6">
+    <div className="space-y-6">
       <section className="grid gap-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm md:grid-cols-2">
         <div className="space-y-4">
           <div className="flex items-center gap-3">
