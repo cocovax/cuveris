@@ -2,6 +2,7 @@ import { type Tank, type TankContents, type TemperatureSample } from '../domain/
 import { type TankConfig } from '../domain/config'
 import { getDataContext, postgresAdapters } from '../data/dataContext'
 import { eventRepository } from './eventRepository'
+import { configRepository } from './configRepository'
 
 const ctx = () => getDataContext()
 
@@ -41,7 +42,27 @@ const createTankFromConfig = (cuverieId: string, config: TankConfig): Tank => ({
 })
 
 export const tankRepository = {
-  list: () => ctx().tanks.list().filter((tank) => !tank.isDeleted),
+  list: () => {
+    // Ne renvoyer que les cuves qui sont dans la configuration actuelle
+    const cuveries = configRepository.list()
+    if (cuveries.length === 0) {
+      // Aucune configuration MQTT reçue, ne renvoyer aucune cuve
+      return []
+    }
+    
+    // Créer un Set des IX configurés
+    const configuredIxs = new Set<number>()
+    cuveries.forEach((cuverie) => {
+      cuverie.tanks.forEach((tank) => {
+        configuredIxs.add(tank.ix)
+      })
+    })
+    
+    // Filtrer les cuves pour ne garder que celles configurées
+    return ctx()
+      .tanks.list()
+      .filter((tank) => !tank.isDeleted && configuredIxs.has(tank.ix))
+  },
   getByIx: (ix: number) => {
     const tank = ctx().tanks.getByIx(ix)
     return tank && !tank.isDeleted ? tank : undefined

@@ -41,6 +41,9 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
       ),
     }))
   },
-  applyUpdate: (cuveries) => set({ cuveries: cuveries.map(normalizeCuverie), loading: false }),
+  applyUpdate: (cuveries) => {
+    console.log('[ConfigStore] Mise à jour de la configuration:', cuveries.length, 'cuverie(s)')
+    set({ cuveries: cuveries.map(normalizeCuverie), loading: false })
+  },
 }))
 

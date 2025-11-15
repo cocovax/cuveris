@@ -42,14 +42,18 @@ io.on('connection', (socket) => {
 
 const disposePostgresSync = initPostgresSync()
 
+console.log('[Server] Initialisation du gateway MQTT...')
 const unsubscribe = mqttGateway.onTelemetry(({ tank }) => {
   io.emit('tanks:update', tank)
 })
 const unsubscribeConfig = mqttGateway.onConfig((event) => {
+  console.log(`[Socket.IO] Émission config:update avec ${event.cuveries.length} cuverie(s)`)
   io.emit('config:update', event)
 })
 
+console.log('[Server] Démarrage du gateway MQTT...')
 mqttGateway.start()
+console.log('[Server] Gateway MQTT démarré')
 
 const port = env.port
 

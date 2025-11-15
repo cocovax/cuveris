@@ -37,10 +37,12 @@ export const useTankStore = create<TankState>((set, get) => ({
     set({ loading: true })
     try {
       const [tanks, alarms] = await Promise.all([fetchTanks(), fetchAlarms()])
+      // Toujours mettre à jour, même si la liste est vide (pour vider les anciennes cuves)
       set({ tanks, alarms, loading: false, selectedTank: undefined })
     } catch (error) {
       console.error('[TankStore] Impossible de charger les données', error)
-      set({ loading: false })
+      // En cas d'erreur, vider aussi les cuves pour éviter d'afficher des données obsolètes
+      set({ tanks: [], alarms: [], loading: false, selectedTank: undefined })
     }
   },
 

@@ -86,7 +86,8 @@ tankRoutes.post('/:ix/contents', (req, res) => {
     notes === undefined ? { ...rest } : { ...rest, notes }
   const updated = tankRepository.updateContents(ix, contents)
   if (!updated) return res.status(404).json({ error: 'Cuve introuvable' })
-  mqttGateway.publishCommand(ix, { type: 'contents', value: contents })
+  // Publier uniquement l'affectation (grape) via MQTT, les autres infos restent en BDD
+  mqttGateway.publishCommand(ix, { type: 'contents', value: contents.grape })
   return res.json({ data: updated })
 })
 

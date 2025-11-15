@@ -80,7 +80,8 @@ exports.tankRoutes.post('/:ix/contents', (req, res) => {
     const updated = tankRepository_1.tankRepository.updateContents(ix, contents);
     if (!updated)
         return res.status(404).json({ error: 'Cuve introuvable' });
-    mqttGateway_1.mqttGateway.publishCommand(ix, { type: 'contents', value: contents });
+    // Publier uniquement l'affectation (grape) via MQTT, les autres infos restent en BDD
+    mqttGateway_1.mqttGateway.publishCommand(ix, { type: 'contents', value: contents.grape });
     return res.json({ data: updated });
 });
 //# sourceMappingURL=tankRoutes.js.map

@@ -113,6 +113,11 @@ const eventLog = [];
 const cuveries = new Map();
 const generalModes = new Map();
 const initialise = () => {
+    // Ne pas initialiser les cuves seed en production
+    // Elles seront créées uniquement via la configuration MQTT ou en mode mock
+    if (!env_1.env.mqtt.enableMock) {
+        return;
+    }
     seedTanks.forEach((tank) => {
         const history = generateHistory(tank.temperature - 1, tank.temperature + 1.5);
         historyMap.set(tank.ix, history);

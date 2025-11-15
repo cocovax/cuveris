@@ -29,6 +29,7 @@ function App() {
   const authStatus = useAuthStore((state) => state.status)
   const initializeAuth = useAuthStore((state) => state.initialize)
   const loadConfig = useConfigStore((state) => state.load)
+  const cuveries = useConfigStore((state) => state.cuveries)
   useMqttBridge()
 
   useEffect(() => {
@@ -41,6 +42,14 @@ function App() {
       void initializeTanks()
     }
   }, [authStatus, initializeTanks, loadConfig])
+
+  // Recharger les cuves quand la configuration change
+  useEffect(() => {
+    if (authStatus === 'authenticated') {
+      console.log('[App] Rechargement des cuves, configuration:', cuveries.length, 'cuverie(s)')
+      void initializeTanks()
+    }
+  }, [authStatus, cuveries.length, initializeTanks])
 
   if (authStatus === 'idle' || authStatus === 'loading') {
     return (

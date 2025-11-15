@@ -60,10 +60,12 @@ export function TankControls({ tank }: TankControlsProps) {
       volumeLiters: Number(volume) || tank.capacityLiters,
       notes,
     }
+    // Sauvegarder toutes les infos en BDD via l'API REST
     await updateContents(tank.ix, {
       ...payload,
     })
-    mqttGateway.publishCommand(tank.ix, { type: 'contents', value: payload })
+    // Publier uniquement l'affectation (grape) via MQTT
+    mqttGateway.publishCommand(tank.ix, { type: 'contents', value: grape })
   }
 
   return (

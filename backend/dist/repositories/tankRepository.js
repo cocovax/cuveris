@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.tankRepository = void 0;
 const dataContext_1 = require("../data/dataContext");
 const eventRepository_1 = require("./eventRepository");
+const configRepository_1 = require("./configRepository");
 const ctx = () => (0, dataContext_1.getDataContext)();
 const updateTank = (ix, updater) => {
     const existing = ctx().tanks.getByIx(ix);
@@ -37,7 +38,25 @@ const createTankFromConfig = (cuverieId, config) => ({
     isDeleted: false,
 });
 exports.tankRepository = {
-    list: () => ctx().tanks.list().filter((tank) => !tank.isDeleted),
+    list: () => {
+        // Ne renvoyer que les cuves qui sont dans la configuration actuelle
+        const cuveries = configRepository_1.configRepository.list();
+        if (cuveries.length === 0) {
+            // Aucune configuration MQTT reçue, ne renvoyer aucune cuve
+            return [];
+        }
+        // Créer un Set des IX configurés
+        const configuredIxs = new Set();
+        cuveries.forEach((cuverie) => {
+            cuverie.tanks.forEach((tank) => {
+                configuredIxs.add(tank.ix);
+            });
+        });
+        // Filtrer les cuves pour ne garder que celles configurées
+        return ctx()
+            .tanks.list()
+            .filter((tank) => !tank.isDeleted && configuredIxs.has(tank.ix));
+    },
     getByIx: (ix) => {
         const tank = ctx().tanks.getByIx(ix);
         return tank && !tank.isDeleted ? tank : undefined;

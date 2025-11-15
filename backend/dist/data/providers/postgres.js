@@ -15,7 +15,7 @@ class PostgresEventLogAdapter {
         return result.rows;
     }
     async append(entry) {
-        await this.pool.query(`INSERT INTO event_log (id, timestamp, tank_id, category, source, summary, details, metadata)
+        await this.pool.query(`INSERT INTO event_log (id, timestamp, tank_ix, category, source, summary, details, metadata)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`, [
             entry.id,
             entry.timestamp,

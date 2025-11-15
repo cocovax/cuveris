@@ -41,7 +41,7 @@ const emitEvent = (event: EventLogEntry) => {
 }
 
 const applyConfig = (cuveries: CuverieConfig[]) => {
-  if (cuveries.length === 0) return
+  console.log('[MQTT Gateway] Configuration reçue:', cuveries.length, 'cuverie(s)')
   useConfigStore.getState().applyUpdate(cuveries)
 }
 
@@ -166,6 +166,7 @@ const startSocket = () => {
   })
 
   socket.on('config:update', (event: { cuveries: CuverieConfig[] }) => {
+    console.log('[Socket.IO] Événement config:update reçu:', event.cuveries.length, 'cuverie(s)')
     applyConfig(event.cuveries)
   })
 }

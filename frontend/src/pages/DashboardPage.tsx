@@ -7,10 +7,27 @@ import { type Tank } from '../types'
 
 export function DashboardPage() {
   const { tanks, loading } = useTankStore()
-  const cuveries = useConfigStore((state) => state.cuveries)
+  const { cuveries, loading: configLoading } = useConfigStore()
+
+  // Créer un Set des IX configurés pour filtrer les cuves
+  const configuredTankIxs = useMemo(() => {
+    const ixs = new Set<number>()
+    cuveries.forEach((cuverie) => {
+      cuverie.tanks.forEach((tank) => {
+        ixs.add(tank.ix)
+      })
+    })
+    return ixs
+  }, [cuveries])
+
+  // Filtrer les cuves pour ne garder que celles configurées
+  const configuredTanks = useMemo(() => {
+    if (cuveries.length === 0) return []
+    return tanks.filter((tank) => configuredTankIxs.has(tank.ix))
+  }, [tanks, configuredTankIxs, cuveries.length])
 
   const kpis = useMemo(() => {
-    if (tanks.length === 0) {
+    if (configuredTanks.length === 0) {
       return {
         averageTemperature: 0,
         runningCount: 0,
@@ -19,20 +36,20 @@ export function DashboardPage() {
     }
 
     const averageTemperature =
-      tanks.reduce((total, tank) => total + tank.temperature, 0) / (tanks.length || 1)
-    const runningCount = tanks.filter((tank) => tank.isRunning).length
-    const alarmCount = tanks.filter((tank) => tank.alarms.length > 0).length
+      configuredTanks.reduce((total, tank) => total + tank.temperature, 0) / (configuredTanks.length || 1)
+    const runningCount = configuredTanks.filter((tank) => tank.isRunning).length
+    const alarmCount = configuredTanks.filter((tank) => tank.alarms.length > 0).length
 
     return {
       averageTemperature: Number(averageTemperature.toFixed(1)),
       runningCount,
       alarmCount,
     }
-  }, [tanks])
+  }, [configuredTanks])
 
   const tanksByCuverie = useMemo(() => {
     const grouped = new Map<string, Tank[]>()
-    tanks.forEach((tank) => {
+    configuredTanks.forEach((tank) => {
       const key = tank.cuverieId ?? 'default'
       if (!grouped.has(key)) {
         grouped.set(key, [])
@@ -40,7 +57,7 @@ export function DashboardPage() {
       grouped.get(key)!.push(tank)
     })
     return grouped
-  }, [tanks])
+  }, [configuredTanks])
 
   if (loading) {
     return (
@@ -58,10 +75,14 @@ export function DashboardPage() {
         <MetricCard title="Température moyenne" value={`${kpis.averageTemperature}°C`} />
         <MetricCard title="Cuves actives" value={`${kpis.runningCount}`} />
         <MetricCard title="Alarmes actives" value={`${kpis.alarmCount}`} tone={kpis.alarmCount > 0 ? 'danger' : 'info'} />
-        <MetricCard title="Cuves suivies" value={`${tanks.length}`} tone="info" />
+        <MetricCard title="Cuves suivies" value={`${configuredTanks.length}`} tone="info" />
       </section>
 
-      {cuveries.length > 0 ? (
+      {configLoading ? (
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center text-slate-500 shadow-sm">
+          Chargement de la configuration...
+        </div>
+      ) : cuveries.length > 0 ? (
         cuveries.map((cuverie) => {
           const cuverieTanks = tanksByCuverie.get(cuverie.id) ?? []
           return (
@@ -92,11 +113,12 @@ export function DashboardPage() {
         })
       ) : (
         <section>
-          <h2 className="mb-4 text-lg font-semibold text-slate-900">Cuves</h2>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {tanks.map((tank) => (
-              <TankCard key={tank.ix} tank={tank} />
-            ))}
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm">
+            <p className="text-lg font-semibold text-slate-900">Aucune configuration disponible</p>
+            <p className="mt-2 text-sm text-slate-500">
+              En attente de la configuration MQTT sur le topic{' '}
+              <code className="rounded bg-slate-100 px-1 py-0.5 text-xs text-slate-600">global/config/cuves</code>
+            </p>
           </div>
         </section>
       )}
