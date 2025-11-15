@@ -52,8 +52,11 @@ export function TankDetailPage() {
     )
   }
 
+  // Forcer le re-render quand la température ou la consigne change
+  const tankKey = `${tank.ix}-${tank.temperature}-${tank.setpoint}-${tank.lastUpdatedAt}`
+
   return (
-    <div className="space-y-6">
+    <div key={tankKey} className="space-y-6">
       <section className="grid gap-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm md:grid-cols-2">
         <div className="space-y-4">
           <div className="flex items-center gap-3">
@@ -67,11 +70,21 @@ export function TankDetailPage() {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-3 justify-between">
+          <div className="flex items-center gap-3 justify-between flex-wrap">
             <TankStatusPill status={tank.status} />
-            <span className="text-sm text-slate-500">
-              Dernière mise à jour {new Date(tank.lastUpdatedAt).toLocaleTimeString('fr-FR')}
-            </span>
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-slate-500">Dernière mise à jour :</span>
+              <span className="font-semibold text-slate-700">
+                {new Date(tank.lastUpdatedAt).toLocaleString('fr-FR', { 
+                  day: '2-digit', 
+                  month: '2-digit', 
+                  year: 'numeric',
+                  hour: '2-digit', 
+                  minute: '2-digit',
+                  second: '2-digit'
+                })}
+              </span>
+            </div>
             {tank.cuverieId && (
               <span className="text-xs font-semibold uppercase text-slate-400">
                 {cuveries.find((item) => item.id === tank.cuverieId)?.name ?? tank.cuverieId}
@@ -79,12 +92,30 @@ export function TankDetailPage() {
             )}
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <Metric label="Température" value={`${tank.temperature.toFixed(1)}°C`} />
-            <Metric label="Consigne" value={`${tank.setpoint.toFixed(1)}°C`} tone="highlight" />
+            <Metric 
+              label="Température" 
+              value={tank.temperature === -99 ? 'N/A' : `${tank.temperature.toFixed(1)}°C`}
+              tone={tank.temperature === -99 ? 'muted' : undefined}
+            />
+            <Metric 
+              label="Consigne" 
+              value={tank.setpoint === -99 ? 'N/A' : `${tank.setpoint.toFixed(1)}°C`}
+              tone={tank.setpoint === -99 ? 'muted' : 'highlight'}
+            />
             <Metric
               label="Écart"
-              value={`${(tank.temperature - tank.setpoint).toFixed(1)}°C`}
-              tone={tank.temperature > tank.setpoint + 1 ? 'warning' : 'muted'}
+              value={
+                tank.temperature === -99 || tank.setpoint === -99
+                  ? 'N/A'
+                  : `${(tank.temperature - tank.setpoint).toFixed(1)}°C`
+              }
+              tone={
+                tank.temperature === -99 || tank.setpoint === -99
+                  ? 'muted'
+                  : tank.temperature > tank.setpoint + 1
+                    ? 'warning'
+                    : 'muted'
+              }
             />
             <Metric label="Statut" value={tank.isRunning ? 'En marche' : 'Arrêtée'} tone={tank.isRunning ? 'success' : 'muted'} />
           </div>
@@ -127,7 +158,7 @@ function Metric({ label, value, tone = 'muted' }: MetricProps) {
     highlight: 'text-primary',
     warning: 'text-danger',
     success: 'text-success',
-    muted: 'text-slate-600',
+    muted: 'text-slate-400',
   }
 
   const resolvedTone: MetricTone = tone ?? 'muted'

@@ -54,9 +54,18 @@ let offlineCheckInterval: NodeJS.Timeout | undefined
 
 // Fonction pour s'abonner aux topics des cuves configurées
 const subscribeToTankTopics = () => {
-  if (!client || mode !== 'live') return
+  console.log(`[MQTT] subscribeToTankTopics appelée, mode: ${mode}, client: ${!!client}`)
+  if (!client || mode !== 'live') {
+    console.log(`[MQTT] Abonnement annulé: client=${!!client}, mode=${mode}`)
+    return
+  }
   
   const tanks = tankRepository.list()
+  console.log(`[MQTT] Cuves trouvées pour abonnement: ${tanks.length}`)
+  tanks.forEach((tank) => {
+    console.log(`[MQTT] Cuve ${tank.ix} (${tank.name})`)
+  })
+  
   const topicsToSubscribe = new Set<string>()
   
   tanks.forEach((tank) => {
@@ -67,7 +76,7 @@ const subscribeToTankTopics = () => {
   })
   
   if (topicsToSubscribe.size > 0) {
-    console.log(`[MQTT] Abonnement aux topics des cuves: ${Array.from(topicsToSubscribe).join(', ')}`)
+    console.log(`[MQTT] Abonnement aux topics des cuves (${topicsToSubscribe.size} topics): ${Array.from(topicsToSubscribe).join(', ')}`)
     topicsToSubscribe.forEach((topic) => {
       client?.subscribe(topic, (err, granted) => {
         if (err) {
@@ -77,6 +86,8 @@ const subscribeToTankTopics = () => {
         }
       })
     })
+  } else {
+    console.log(`[MQTT] Aucun topic à s'abonner (${tanks.length} cuves trouvées)`)
   }
 }
 
@@ -121,10 +132,20 @@ const resolveTankIx = (identifier: string | number | undefined): number | undefi
 }
 
 const emitTelemetry = (tankRef: string | number, payload: Partial<Tank>, source: TelemetryEvent['source']) => {
+  console.log(`[MQTT] emitTelemetry appelée avec tankRef: ${tankRef}, payload:`, payload)
   const tankIx = resolveTankIx(tankRef)
-  if (tankIx === undefined) return
+  console.log(`[MQTT] Tank IX résolu: ${tankIx}`)
+  if (tankIx === undefined) {
+    console.log(`[MQTT] Tank IX non résolu, abandon`)
+    return
+  }
   const updated = tankRepository.applyTelemetry(tankIx, payload)
-  if (!updated) return
+  console.log(`[MQTT] Tank mis à jour: ${!!updated}`)
+  if (!updated) {
+    console.log(`[MQTT] applyTelemetry a retourné undefined`)
+    return
+  }
+  console.log(`[MQTT] Émission événement telemetry pour cuve ${updated.ix}`)
   telemetryEmitter.emit('telemetry', { tank: updated, source } satisfies TelemetryEvent)
 }
 
@@ -354,13 +375,23 @@ const startLive = () => {
   
   // Gestion des messages des cuves selon le format du cahier des charges
   const handleTankMessage = (topic: string, message: string) => {
+    console.log(`[MQTT] handleTankMessage appelée pour topic: ${topic}, message: ${message}`)
     const segments = topic.split('/')
-    if (segments.length < 3) return
+    console.log(`[MQTT] Segments du topic: ${segments.join(', ')}`)
+    if (segments.length < 3) {
+      console.log(`[MQTT] Topic invalide (moins de 3 segments): ${segments.length}`)
+      return
+    }
     
     const tankIx = Number(segments[1])
-    if (!Number.isFinite(tankIx)) return
+    console.log(`[MQTT] Tank IX extrait: ${tankIx} (isFinite: ${Number.isFinite(tankIx)})`)
+    if (!Number.isFinite(tankIx)) {
+      console.log(`[MQTT] Tank IX invalide: ${segments[1]}`)
+      return
+    }
     
     const dataType = segments[2] // temp, consigne, etat
+    console.log(`[MQTT] Type de données: ${dataType}`)
     const payload: Partial<Tank> = { ix: tankIx }
     
     // Mettre à jour le timestamp de dernière réception
@@ -371,9 +402,12 @@ const startLive = () => {
         case 'temp':
           // Température : REAL
           const temp = Number(message.trim())
+          console.log(`[MQTT] Température parsée: ${temp} (isFinite: ${Number.isFinite(temp)})`)
           if (Number.isFinite(temp)) {
             payload.temperature = temp
-            console.log(`[MQTT] Température cuve ${tankIx}: ${temp}°C`)
+            console.log(`[MQTT] Température cuve ${tankIx}: ${temp}°C - payload créé`)
+          } else {
+            console.log(`[MQTT] Température invalide: ${message}`)
           }
           break
           
@@ -437,8 +471,14 @@ const startLive = () => {
       }
       
       // Mettre à jour la cuve si on a reçu des données
+      console.log(`[MQTT] Payload final: ${JSON.stringify(payload)}, clés: ${Object.keys(payload).length}`)
       if (Object.keys(payload).length > 1) { // Plus que juste l'ix
+        // Mettre à jour le timestamp de dernière mise à jour
+        payload.lastUpdatedAt = new Date().toISOString()
+        console.log(`[MQTT] Appel emitTelemetry pour cuve ${tankIx} avec payload:`, payload)
         emitTelemetry(tankIx, payload, 'mqtt')
+      } else {
+        console.log(`[MQTT] Payload insuffisant, pas de mise à jour (seulement ${Object.keys(payload).length} clé(s))`)
       }
     } catch (error) {
       console.error(`[MQTT] Erreur traitement message cuve ${tankIx} (${dataType}):`, error)

@@ -63,7 +63,7 @@ export function CuveriePage() {
         <h3 className="mb-4 text-lg font-semibold text-slate-900">Cuves ({tanksInCuverie.length})</h3>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {tanksInCuverie.map((tank) => (
-            <TankCard key={tank.ix} tank={tank} />
+            <TankCard key={`${tank.ix}-${tank.temperature}-${tank.setpoint}-${tank.lastUpdatedAt}`} tank={tank} />
           ))}
         </div>
       </section>

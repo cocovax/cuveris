@@ -29,8 +29,8 @@ const createTankFromConfig = (cuverieId: string, config: TankConfig): Tank => ({
   id: config.id,
   name: config.displayName,
   status: 'idle',
-  temperature: 20,
-  setpoint: 20,
+  temperature: -99, // Valeur par défaut si aucune lecture MQTT
+  setpoint: -99, // Valeur par défaut si aucune lecture MQTT
   capacityLiters: 5000,
   fillLevelPercent: 50,
   isRunning: false,
@@ -72,14 +72,27 @@ export const tankRepository = {
     if (!existing) {
       const created = createTankFromConfig(cuverieId, config)
       ctx().tanks.create(created)
+      // Synchroniser avec PostgreSQL
+      if (postgresAdapters) {
+        void postgresAdapters.tanks.upsert(created).catch((error) => {
+          console.error('[PostgresSync] Erreur création cuve', config.ix, error)
+        })
+      }
       return created
     }
-    return ctx().tanks.update(config.ix, (tank) => ({
+    const updated = ctx().tanks.update(config.ix, (tank) => ({
       ...tank,
       name: config.displayName,
       cuverieId,
       isDeleted: false,
     }))
+    // Synchroniser avec PostgreSQL
+    if (updated && postgresAdapters) {
+      void postgresAdapters.tanks.upsert(updated).catch((error) => {
+        console.error('[PostgresSync] Erreur mise à jour cuve', config.ix, error)
+      })
+    }
+    return updated
   },
   removeMissing: (cuverieId: string, configs: TankConfig[]) => {
     const ixSet = new Set(configs.map((tank) => tank.ix))
@@ -92,6 +105,12 @@ export const tankRepository = {
           status: 'offline',
           isDeleted: true,
         }))
+        // Synchroniser avec PostgreSQL
+        if (postgresAdapters) {
+          void postgresAdapters.tanks.markAsDeleted(tank.ix).catch((error) => {
+            console.error('[PostgresSync] Erreur suppression cuve', tank.ix, error)
+          })
+        }
       })
   },
   updateSetpoint: (ix: number, setpoint: number) =>
@@ -110,8 +129,8 @@ export const tankRepository = {
         setpoint,
       }
     }),
-  updateRunning: (ix: number, isRunning: boolean) =>
-    updateTank(ix, (tank) => {
+  updateRunning: (ix: number, isRunning: boolean) => {
+    const updated = updateTank(ix, (tank) => {
       eventRepository.append({
         id: `cmd-running-${Date.now()}`,
         timestamp: new Date().toISOString(),
@@ -124,10 +143,19 @@ export const tankRepository = {
         ...tank,
         isRunning,
         status: isRunning ? 'cooling' : 'idle',
+        lastUpdatedAt: new Date().toISOString(),
       }
-    }),
-  updateContents: (ix: number, contents: TankContents) =>
-    updateTank(ix, (tank) => {
+    })
+    // Synchroniser avec PostgreSQL
+    if (updated && postgresAdapters) {
+      void postgresAdapters.tanks.upsert(updated).catch((error) => {
+        console.error('[PostgresSync] Erreur mise à jour running', ix, error)
+      })
+    }
+    return updated
+  },
+  updateContents: (ix: number, contents: TankContents) => {
+    const updated = updateTank(ix, (tank) => {
       eventRepository.append({
         id: `cmd-contents-${Date.now()}`,
         timestamp: new Date().toISOString(),
@@ -140,8 +168,17 @@ export const tankRepository = {
       return {
         ...tank,
         contents,
+        lastUpdatedAt: new Date().toISOString(),
       }
-    }),
+    })
+    // Synchroniser avec PostgreSQL
+    if (updated && postgresAdapters) {
+      void postgresAdapters.tanks.upsert(updated).catch((error) => {
+        console.error('[PostgresSync] Erreur mise à jour contenu', ix, error)
+      })
+    }
+    return updated
+  },
   applyTelemetry: (ix: number, payload: Partial<Tank>) => {
     const current = ctx().tanks.getByIx(ix)
     if (!current || current.isDeleted) {
@@ -167,12 +204,19 @@ export const tankRepository = {
         summary: `Télémetrie ${sample.value.toFixed(1)}°C`,
       })
     }
-    return updateTank(ix, (tank) => ({
+    const updated = updateTank(ix, (tank) => ({
       ...tank,
       ...payload,
       history: ctx().temperatureHistory.list(ix, 48),
       isDeleted: false,
     }))
+    // Synchroniser avec PostgreSQL
+    if (updated && postgresAdapters) {
+      void postgresAdapters.tanks.upsert(updated).catch((error) => {
+        console.error('[PostgresSync] Erreur mise à jour télémétrie', ix, error)
+      })
+    }
+    return updated
   },
 }
 

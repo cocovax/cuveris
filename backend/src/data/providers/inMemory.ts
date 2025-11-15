@@ -171,21 +171,22 @@ const buildTankStore = (): TankStore => ({
     const history = historyMap.get(ix) ?? []
     return cloneTank(tank, history)
   },
-  update: (ix: number, updater: TankUpdater) => {
-    const current = tanksMap.get(ix)
-    if (!current) return undefined
-    const history = historyMap.get(ix) ?? []
-    const candidate = cloneTank(current, history)
-    const updated = updater(candidate)
-    historyMap.set(ix, [...updated.history])
-    const stored: Tank = {
-      ...updated,
-      history: [],
-      lastUpdatedAt: now(),
-    }
-    tanksMap.set(ix, stored)
-    return cloneTank(stored, historyMap.get(ix) ?? [])
-  },
+        update: (ix: number, updater: TankUpdater) => {
+          const current = tanksMap.get(ix)
+          if (!current) return undefined
+          const history = historyMap.get(ix) ?? []
+          const candidate = cloneTank(current, history)
+          const updated = updater(candidate)
+          historyMap.set(ix, [...updated.history])
+          const stored: Tank = {
+            ...updated,
+            history: [],
+            // Préserver lastUpdatedAt du payload s'il est fourni, sinon utiliser now()
+            lastUpdatedAt: updated.lastUpdatedAt ?? now(),
+          }
+          tanksMap.set(ix, stored)
+          return cloneTank(stored, historyMap.get(ix) ?? [])
+        },
   create: (tank: Tank) => {
     tanksMap.set(tank.ix, { ...tank, history: [] })
     historyMap.set(tank.ix, [...tank.history])

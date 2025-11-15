@@ -6,7 +6,8 @@ import { Skeleton } from '../components/ui/Skeleton'
 import { type Tank } from '../types'
 
 export function DashboardPage() {
-  const { tanks, loading } = useTankStore()
+  const tanks = useTankStore((state) => state.tanks)
+  const loading = useTankStore((state) => state.loading)
   const { cuveries, loading: configLoading } = useConfigStore()
 
   // Créer un Set des IX configurés pour filtrer les cuves
@@ -100,7 +101,7 @@ export function DashboardPage() {
               </header>
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {cuverieTanks.map((tank) => (
-                  <TankCard key={tank.ix} tank={tank} />
+                  <TankCard key={`${tank.ix}-${tank.temperature}-${tank.setpoint}-${tank.lastUpdatedAt}`} tank={tank} />
                 ))}
                 {cuverieTanks.length === 0 && (
                   <div className="col-span-full rounded-2xl border border-slate-200 bg-white p-6 text-center text-slate-500 shadow-sm">

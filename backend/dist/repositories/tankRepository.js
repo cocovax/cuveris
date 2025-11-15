@@ -66,14 +66,27 @@ exports.tankRepository = {
         if (!existing) {
             const created = createTankFromConfig(cuverieId, config);
             ctx().tanks.create(created);
+            // Synchroniser avec PostgreSQL
+            if (dataContext_1.postgresAdapters) {
+                void dataContext_1.postgresAdapters.tanks.upsert(created).catch((error) => {
+                    console.error('[PostgresSync] Erreur création cuve', config.ix, error);
+                });
+            }
             return created;
         }
-        return ctx().tanks.update(config.ix, (tank) => ({
+        const updated = ctx().tanks.update(config.ix, (tank) => ({
             ...tank,
             name: config.displayName,
             cuverieId,
             isDeleted: false,
         }));
+        // Synchroniser avec PostgreSQL
+        if (updated && dataContext_1.postgresAdapters) {
+            void dataContext_1.postgresAdapters.tanks.upsert(updated).catch((error) => {
+                console.error('[PostgresSync] Erreur mise à jour cuve', config.ix, error);
+            });
+        }
+        return updated;
     },
     removeMissing: (cuverieId, configs) => {
         const ixSet = new Set(configs.map((tank) => tank.ix));
@@ -86,6 +99,12 @@ exports.tankRepository = {
                 status: 'offline',
                 isDeleted: true,
             }));
+            // Synchroniser avec PostgreSQL
+            if (dataContext_1.postgresAdapters) {
+                void dataContext_1.postgresAdapters.tanks.markAsDeleted(tank.ix).catch((error) => {
+                    console.error('[PostgresSync] Erreur suppression cuve', tank.ix, error);
+                });
+            }
         });
     },
     updateSetpoint: (ix, setpoint) => updateTank(ix, (tank) => {
@@ -103,36 +122,56 @@ exports.tankRepository = {
             setpoint,
         };
     }),
-    updateRunning: (ix, isRunning) => updateTank(ix, (tank) => {
-        eventRepository_1.eventRepository.append({
-            id: `cmd-running-${Date.now()}`,
-            timestamp: new Date().toISOString(),
-            tankIx: tank.ix,
-            category: 'command',
-            source: 'user',
-            summary: isRunning ? 'Cuve démarrée' : 'Cuve arrêtée',
+    updateRunning: (ix, isRunning) => {
+        const updated = updateTank(ix, (tank) => {
+            eventRepository_1.eventRepository.append({
+                id: `cmd-running-${Date.now()}`,
+                timestamp: new Date().toISOString(),
+                tankIx: tank.ix,
+                category: 'command',
+                source: 'user',
+                summary: isRunning ? 'Cuve démarrée' : 'Cuve arrêtée',
+            });
+            return {
+                ...tank,
+                isRunning,
+                status: isRunning ? 'cooling' : 'idle',
+                lastUpdatedAt: new Date().toISOString(),
+            };
         });
-        return {
-            ...tank,
-            isRunning,
-            status: isRunning ? 'cooling' : 'idle',
-        };
-    }),
-    updateContents: (ix, contents) => updateTank(ix, (tank) => {
-        eventRepository_1.eventRepository.append({
-            id: `cmd-contents-${Date.now()}`,
-            timestamp: new Date().toISOString(),
-            tankIx: tank.ix,
-            category: 'command',
-            source: 'user',
-            summary: 'Contenu mis à jour',
-            metadata: { ...contents },
+        // Synchroniser avec PostgreSQL
+        if (updated && dataContext_1.postgresAdapters) {
+            void dataContext_1.postgresAdapters.tanks.upsert(updated).catch((error) => {
+                console.error('[PostgresSync] Erreur mise à jour running', ix, error);
+            });
+        }
+        return updated;
+    },
+    updateContents: (ix, contents) => {
+        const updated = updateTank(ix, (tank) => {
+            eventRepository_1.eventRepository.append({
+                id: `cmd-contents-${Date.now()}`,
+                timestamp: new Date().toISOString(),
+                tankIx: tank.ix,
+                category: 'command',
+                source: 'user',
+                summary: 'Contenu mis à jour',
+                metadata: { ...contents },
+            });
+            return {
+                ...tank,
+                contents,
+                lastUpdatedAt: new Date().toISOString(),
+            };
         });
-        return {
-            ...tank,
-            contents,
-        };
-    }),
+        // Synchroniser avec PostgreSQL
+        if (updated && dataContext_1.postgresAdapters) {
+            void dataContext_1.postgresAdapters.tanks.upsert(updated).catch((error) => {
+                console.error('[PostgresSync] Erreur mise à jour contenu', ix, error);
+            });
+        }
+        return updated;
+    },
     applyTelemetry: (ix, payload) => {
         const current = ctx().tanks.getByIx(ix);
         if (!current || current.isDeleted) {
@@ -158,12 +197,19 @@ exports.tankRepository = {
                 summary: `Télémetrie ${sample.value.toFixed(1)}°C`,
             });
         }
-        return updateTank(ix, (tank) => ({
+        const updated = updateTank(ix, (tank) => ({
             ...tank,
             ...payload,
             history: ctx().temperatureHistory.list(ix, 48),
             isDeleted: false,
         }));
+        // Synchroniser avec PostgreSQL
+        if (updated && dataContext_1.postgresAdapters) {
+            void dataContext_1.postgresAdapters.tanks.upsert(updated).catch((error) => {
+                console.error('[PostgresSync] Erreur mise à jour télémétrie', ix, error);
+            });
+        }
+        return updated;
     },
 };
 //# sourceMappingURL=tankRepository.js.map

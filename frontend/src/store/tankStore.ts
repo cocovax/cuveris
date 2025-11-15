@@ -77,11 +77,17 @@ export const useTankStore = create<TankState>((set, get) => ({
   },
 
   applyTelemetry: (payload) => {
+    console.log('[TankStore] applyTelemetry appelée pour cuve', payload.ix, 'payload:', payload)
     set((state) => {
       const tanks = state.tanks
-        .map((tank) =>
-          tank.ix === payload.ix ? { ...tank, ...payload, lastUpdatedAt: new Date().toISOString() } : tank,
-        )
+        .map((tank) => {
+          if (tank.ix === payload.ix) {
+            const updated = { ...tank, ...payload, lastUpdatedAt: payload.lastUpdatedAt ?? new Date().toISOString() }
+            console.log('[TankStore] Cuve mise à jour:', updated.ix, 'temp:', updated.temperature)
+            return updated
+          }
+          return tank
+        })
         .filter((tank) => !tank.isDeleted)
 
       const selectedTank =
@@ -89,7 +95,7 @@ export const useTankStore = create<TankState>((set, get) => ({
           ? {
               ...state.selectedTank,
               ...payload,
-              lastUpdatedAt: new Date().toISOString(),
+              lastUpdatedAt: payload.lastUpdatedAt ?? new Date().toISOString(),
               history:
                 payload.history ??
                 (payload.temperature !== undefined
@@ -100,11 +106,16 @@ export const useTankStore = create<TankState>((set, get) => ({
                   : state.selectedTank.history),
             }
           : state.selectedTank
+      
+      if (selectedTank && selectedTank.ix === payload.ix) {
+        console.log('[TankStore] SelectedTank mise à jour:', selectedTank.ix, 'temp:', selectedTank.temperature)
+      }
 
       if (selectedTank?.isDeleted) {
         return { tanks, selectedTank: undefined }
       }
 
+      console.log('[TankStore] État mis à jour, tanks:', tanks.length, 'selectedTank:', selectedTank?.ix)
       return { tanks, selectedTank }
     })
   },

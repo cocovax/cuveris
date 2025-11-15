@@ -10,8 +10,13 @@ interface TankCardProps {
 export function TankCard({ tank }: TankCardProps) {
   const cuverieName =
     useConfigStore((state) => state.cuveries.find((cuverie) => cuverie.id === tank.cuverieId)?.name) ?? null
-  const trend = Number((tank.temperature - tank.setpoint).toFixed(1))
-  const trendLabel = trend === 0 ? 'Stable' : trend > 0 ? `+${trend}°C` : `${trend}°C`
+  
+  // Calculer la tendance seulement si les valeurs sont valides (pas -99)
+  const hasValidValues = tank.temperature !== -99 && tank.setpoint !== -99
+  const trend = hasValidValues ? Number((tank.temperature - tank.setpoint).toFixed(1)) : 0
+  const trendLabel = hasValidValues 
+    ? (trend === 0 ? 'Stable' : trend > 0 ? `+${trend}°C` : `${trend}°C`)
+    : 'N/A'
 
   return (
     <Link
@@ -30,13 +35,18 @@ export function TankCard({ tank }: TankCardProps) {
 
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-4xl font-semibold text-slate-900">{tank.temperature.toFixed(1)}°C</p>
+          <p className={`text-4xl font-semibold ${tank.temperature === -99 ? 'text-slate-400' : 'text-slate-900'}`}>
+            {tank.temperature === -99 ? 'N/A' : `${tank.temperature.toFixed(1)}°C`}
+          </p>
           <p className="text-sm text-slate-500">
-            Consigne <span className="font-semibold text-primary">{tank.setpoint.toFixed(1)}°C</span>
+            Consigne{' '}
+            <span className={`font-semibold ${tank.setpoint === -99 ? 'text-slate-400' : 'text-primary'}`}>
+              {tank.setpoint === -99 ? 'N/A' : `${tank.setpoint.toFixed(1)}°C`}
+            </span>
           </p>
         </div>
         <div className="text-right text-sm">
-          <p className={`font-semibold ${trend >= 1 ? 'text-danger' : trend <= -1 ? 'text-success' : 'text-slate-500'}`}>
+          <p className={`font-semibold ${hasValidValues ? (trend >= 1 ? 'text-danger' : trend <= -1 ? 'text-success' : 'text-slate-500') : 'text-slate-400'}`}>
             {trendLabel}
           </p>
           <p className="text-xs text-slate-400">vs consigne</p>
@@ -59,7 +69,14 @@ export function TankCard({ tank }: TankCardProps) {
           Capacité {tank.capacityLiters.toLocaleString('fr-FR')} L ·{' '}
           {tank.contents ? `${tank.contents.grape} ${tank.contents.vintage}` : 'Non renseigné'}
         </p>
-        <p>Maj {new Date(tank.lastUpdatedAt).toLocaleTimeString('fr-FR')}</p>
+        <p className="font-medium text-slate-500">
+          MAJ {new Date(tank.lastUpdatedAt).toLocaleString('fr-FR', { 
+            day: '2-digit', 
+            month: '2-digit', 
+            hour: '2-digit', 
+            minute: '2-digit' 
+          })}
+        </p>
       </div>
 
       {tank.alarms.length > 0 && (

@@ -158,7 +158,8 @@ const buildTankStore = () => ({
         const stored = {
             ...updated,
             history: [],
-            lastUpdatedAt: now(),
+            // Préserver lastUpdatedAt du payload s'il est fourni, sinon utiliser now()
+            lastUpdatedAt: updated.lastUpdatedAt ?? now(),
         };
         tanksMap.set(ix, stored);
         return cloneTank(stored, historyMap.get(ix) ?? []);

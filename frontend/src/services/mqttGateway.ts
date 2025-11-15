@@ -32,7 +32,11 @@ const defaultPublishOptions: PublishOptions = {
 const getTopicForTank = (tankIx: number, suffix: string) => `${tankIx}/${suffix}`
 
 const emit = (payload: TelemetryPayload) => {
-  listeners.forEach((listener) => listener(payload))
+  console.log('[MQTT Gateway] emit appelée avec payload:', payload.ix, payload.temperature, 'listeners:', listeners.size)
+  listeners.forEach((listener) => {
+    console.log('[MQTT Gateway] Appel listener pour cuve', payload.ix)
+    listener(payload)
+  })
   useMqttStore.getState().recordMessage()
 }
 
@@ -158,6 +162,7 @@ const startSocket = () => {
   })
 
   socket.on('tanks:update', (tank: Tank) => {
+    console.log('[Socket.IO] Événement tanks:update reçu pour cuve', tank.ix, tank.name)
     emit({ ...tank })
   })
 
